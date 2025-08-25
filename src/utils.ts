@@ -1,86 +1,165 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 
-export class SniperBotUtils {
-  private connection: Connection;
-
-  constructor(connection: Connection) {
-    this.connection = connection;
+// Input validation utilities
+export class ValidationError extends Error {
+  constructor(message: string, public field: string, public value: any) {
+    super(message);
+    this.name = 'ValidationError';
   }
+}
 
+// Type guards for input validation
+export const isValidString = (value: any, fieldName: string, minLength = 1): string => {
+  if (typeof value !== 'string') {
+    throw new ValidationError(`${fieldName} must be a string`, fieldName, value);
+  }
+  if (value.length < minLength) {
+    throw new ValidationError(`${fieldName} must be at least ${minLength} characters long`, fieldName, value);
+  }
+  return value;
+};
+
+export const isValidNumber = (value: any, fieldName: string, min?: number, max?: number): number => {
+  if (typeof value !== 'number' || isNaN(value)) {
+    throw new ValidationError(`${fieldName} must be a valid number`, fieldName, value);
+  }
+  if (min !== undefined && value < min) {
+    throw new ValidationError(`${fieldName} must be at least ${min}`, fieldName, value);
+  }
+  if (max !== undefined && value > max) {
+    throw new ValidationError(`${fieldName} must be at most ${max}`, fieldName, value);
+  }
+  return value;
+};
+
+export const isValidPublicKey = (value: any, fieldName: string): PublicKey => {
+  try {
+    if (typeof value === 'string') {
+      return new PublicKey(value);
+    } else if (value instanceof PublicKey) {
+      return value;
+    } else {
+      throw new Error('Invalid type');
+    }
+  } catch (error) {
+    throw new ValidationError(`${fieldName} must be a valid PublicKey`, fieldName, value);
+  }
+};
+
+export const isValidConnection = (connection: any, fieldName: string = 'connection'): Connection => {
+  if (!connection || typeof connection.getLatestBlockhash !== 'function') {
+    throw new ValidationError(`${fieldName} must be a valid Connection instance`, fieldName, connection);
+  }
+  return connection;
+};
+
+/**
+ * Pure, stateless utility functions for Solana operations
+ * All functions include robust input validation and type guards
+ */
+export const SolanaUtils = {
   /**
-   * Check if a token mint is valid
+   * Validate if a string is a valid token mint address
    */
-  async isValidTokenMint(mintAddress: string): Promise<boolean> {
+  isValidTokenMint: (mintAddress: string): boolean => {
     try {
-      const mint = new PublicKey(mintAddress);
-      const accountInfo = await this.connection.getAccountInfo(mint);
-      return accountInfo !== null;
+      isValidString(mintAddress, 'mintAddress', 32);
+      new PublicKey(mintAddress);
+      return true;
     } catch (error) {
       return false;
     }
-  }
+  },
 
   /**
-   * Get token account balance
+   * Get token account balance (pure function - requires connection to be passed)
    */
-  async getTokenBalance(tokenMint: string, walletAddress: string): Promise<number> {
+  getTokenBalance: async (
+    connection: Connection,
+    tokenMint: string,
+    walletAddress: string
+  ): Promise<number> => {
+    const validConnection = isValidConnection(connection);
+    const validTokenMint = isValidString(tokenMint, 'tokenMint', 32);
+    const validWalletAddress = isValidString(walletAddress, 'walletAddress', 32);
+
     try {
-      const mint = new PublicKey(tokenMint);
-      const wallet = new PublicKey(walletAddress);
+      const mint = new PublicKey(validTokenMint);
+      const wallet = new PublicKey(validWalletAddress);
       const tokenAccount = await getAssociatedTokenAddress(mint, wallet);
       
-      const accountInfo = await this.connection.getAccountInfo(tokenAccount);
+      const accountInfo = await validConnection.getAccountInfo(tokenAccount);
       if (!accountInfo) return 0;
 
       // Parse token balance from account data
-      // This is a simplified version - you might need to implement proper SPL token parsing
+      // This is a simplified version - in practice, you'd need proper SPL token parsing
       return accountInfo.data.length;
     } catch (error) {
-      console.error('Error getting token balance:', error);
-      return 0;
+      throw new ValidationError(
+        `Error getting token balance: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'tokenBalance',
+        { tokenMint: validTokenMint, walletAddress: validWalletAddress }
+      );
     }
-  }
+  },
 
   /**
-   * Check wallet balance
+   * Get wallet SOL balance
    */
-  async getWalletBalance(walletAddress: string): Promise<number> {
+  getWalletBalance: async (connection: Connection, walletAddress: string): Promise<number> => {
+    const validConnection = isValidConnection(connection);
+    const validWalletAddress = isValidString(walletAddress, 'walletAddress', 32);
+
     try {
-      const wallet = new PublicKey(walletAddress);
-      const balance = await this.connection.getBalance(wallet);
+      const wallet = new PublicKey(validWalletAddress);
+      const balance = await validConnection.getBalance(wallet);
       return balance / 1e9; // Convert lamports to SOL
     } catch (error) {
-      console.error('Error getting wallet balance:', error);
-      return 0;
+      throw new ValidationError(
+        `Error getting wallet balance: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'walletBalance',
+        walletAddress
+      );
     }
-  }
+  },
 
   /**
    * Validate developer address
    */
-  async validateDeveloperAddress(address: string): Promise<boolean> {
+  validateDeveloperAddress: async (connection: Connection, address: string): Promise<boolean> => {
+    const validConnection = isValidConnection(connection);
+    const validAddress = isValidString(address, 'address', 32);
+
     try {
-      const pubkey = new PublicKey(address);
-      const accountInfo = await this.connection.getAccountInfo(pubkey);
+      const pubkey = new PublicKey(validAddress);
+      const accountInfo = await validConnection.getAccountInfo(pubkey);
       return accountInfo !== null;
     } catch (error) {
       return false;
     }
-  }
+  },
 
   /**
    * Get recent transactions for an address
    */
-  async getRecentTransactions(address: string, limit: number = 10): Promise<any[]> {
+  getRecentTransactions: async (
+    connection: Connection,
+    address: string,
+    limit: number = 10
+  ): Promise<any[]> => {
+    const validConnection = isValidConnection(connection);
+    const validAddress = isValidString(address, 'address', 32);
+    const validLimit = isValidNumber(limit, 'limit', 1, 1000);
+
     try {
-      const pubkey = new PublicKey(address);
-      const signatures = await this.connection.getSignaturesForAddress(pubkey, { limit });
+      const pubkey = new PublicKey(validAddress);
+      const signatures = await validConnection.getSignaturesForAddress(pubkey, { limit: validLimit });
       
       const transactions = await Promise.all(
         signatures.map(async (sig) => {
           try {
-            const tx = await this.connection.getTransaction(sig.signature, {
+            const tx = await validConnection.getTransaction(sig.signature, {
               maxSupportedTransactionVersion: 0
             });
             return {
@@ -102,138 +181,222 @@ export class SniperBotUtils {
 
       return transactions;
     } catch (error) {
-      console.error('Error getting recent transactions:', error);
-      return [];
+      throw new ValidationError(
+        `Error getting recent transactions: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'recentTransactions',
+        { address: validAddress, limit: validLimit }
+      );
     }
-  }
+  },
 
   /**
    * Check RPC health
    */
-  async checkRPCHealth(): Promise<boolean> {
+  checkRPCHealth: async (connection: Connection): Promise<{ healthy: boolean; responseTime: number }> => {
+    const validConnection = isValidConnection(connection);
+
     try {
       const startTime = Date.now();
-      await this.connection.getLatestBlockhash();
+      await validConnection.getLatestBlockhash();
       const responseTime = Date.now() - startTime;
       
-      console.log(`RPC Response Time: ${responseTime}ms`);
-      return responseTime < 5000; // 5 second timeout
+      return {
+        healthy: responseTime < 5000, // 5 second threshold
+        responseTime
+      };
     } catch (error) {
-      console.error('RPC Health Check Failed:', error);
-      return false;
+      return {
+        healthy: false,
+        responseTime: -1
+      };
     }
-  }
+  },
 
   /**
-   * Estimate transaction fees
+   * Estimate transaction fees (pure calculation)
    */
-  async estimateTransactionFee(instructions: any[]): Promise<number> {
-    try {
-      // This is a simplified estimation
-      // In practice, you'd need to simulate the transaction
-      const baseFee = 5000; // Base fee in lamports
-      const instructionFee = instructions.length * 200; // Per instruction fee
-      return (baseFee + instructionFee) / 1e9; // Convert to SOL
-    } catch (error) {
-      console.error('Error estimating transaction fee:', error);
-      return 0.001; // Default fallback
-    }
-  }
+  estimateTransactionFee: (instructionCount: number, priorityFee: number = 0): number => {
+    const validInstructionCount = isValidNumber(instructionCount, 'instructionCount', 0);
+    const validPriorityFee = isValidNumber(priorityFee, 'priorityFee', 0);
+
+    const baseFee = 5000; // Base fee in lamports
+    const instructionFee = validInstructionCount * 200; // Per instruction fee
+    return (baseFee + instructionFee + validPriorityFee) / 1e9; // Convert to SOL
+  },
 
   /**
-   * Format SOL amount
+   * Format SOL amount (pure function)
    */
-  formatSOL(lamports: number): string {
-    return (lamports / 1e9).toFixed(9);
-  }
+  formatSOL: (lamports: number, decimals: number = 9): string => {
+    const validLamports = isValidNumber(lamports, 'lamports', 0);
+    const validDecimals = isValidNumber(decimals, 'decimals', 0, 18);
+    
+    return (validLamports / 1e9).toFixed(validDecimals);
+  },
 
   /**
-   * Format token amount
+   * Format token amount (pure function)
    */
-  formatTokenAmount(amount: number, decimals: number = 9): string {
-    return (amount / Math.pow(10, decimals)).toFixed(decimals);
-  }
+  formatTokenAmount: (amount: number, decimals: number = 9): string => {
+    const validAmount = isValidNumber(amount, 'amount', 0);
+    const validDecimals = isValidNumber(decimals, 'decimals', 0, 18);
+    
+    return (validAmount / Math.pow(10, validDecimals)).toFixed(validDecimals);
+  },
 
   /**
    * Generate performance report
    */
-  async generatePerformanceReport(): Promise<any> {
+  generatePerformanceReport: async (connection: Connection): Promise<{
+    timestamp: string;
+    rpcHealth: { healthy: boolean; responseTime: number };
+    latestBlockhash: string;
+    slot: number;
+    connection: string;
+  }> => {
+    const validConnection = isValidConnection(connection);
+
     try {
-      const rpcHealth = await this.checkRPCHealth();
-      const latestBlockhash = await this.connection.getLatestBlockhash();
+      const rpcHealth = await SolanaUtils.checkRPCHealth(validConnection);
+      const latestBlockhash = await validConnection.getLatestBlockhash();
       
       return {
         timestamp: new Date().toISOString(),
         rpcHealth,
         latestBlockhash: latestBlockhash.blockhash,
         slot: latestBlockhash.lastValidBlockHeight,
-        connection: this.connection.rpcEndpoint
+        connection: validConnection.rpcEndpoint
       };
     } catch (error) {
-      console.error('Error generating performance report:', error);
-      return {
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      throw new ValidationError(
+        `Error generating performance report: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'performanceReport',
+        connection.rpcEndpoint
+      );
     }
-  }
+  },
 
   /**
-   * Monitor specific token
+   * Calculate slippage amount (pure function)
    */
-  async monitorToken(tokenMint: string, duration: number = 60000): Promise<void> {
-    const mint = new PublicKey(tokenMint);
-    const startTime = Date.now();
+  calculateSlippageAmount: (amount: number, slippage: number): number => {
+    const validAmount = isValidNumber(amount, 'amount', 0);
+    const validSlippage = isValidNumber(slippage, 'slippage', 0, 1);
     
-    console.log(`Monitoring token ${tokenMint} for ${duration}ms...`);
-    
-    const interval = setInterval(async () => {
-      try {
-        const accountInfo = await this.connection.getAccountInfo(mint);
-        const elapsed = Date.now() - startTime;
-        
-        if (accountInfo) {
-          console.log(`[${elapsed}ms] Token account exists, size: ${accountInfo.data.length} bytes`);
-        } else {
-          console.log(`[${elapsed}ms] Token account not found`);
-        }
-        
-        if (elapsed >= duration) {
-          clearInterval(interval);
-          console.log('Token monitoring completed');
-        }
-      } catch (error) {
-        console.error('Error monitoring token:', error);
-      }
-    }, 1000);
-  }
+    return validAmount * validSlippage;
+  },
 
   /**
-   * Test connection and basic functionality
+   * Calculate minimum out amount with slippage (pure function)
    */
+  calculateMinimumOut: (expectedOut: number, slippage: number): number => {
+    const validExpectedOut = isValidNumber(expectedOut, 'expectedOut', 0);
+    const validSlippage = isValidNumber(slippage, 'slippage', 0, 1);
+    
+    return validExpectedOut * (1 - validSlippage);
+  },
+
+  /**
+   * Validate transaction signature format (pure function)
+   */
+  isValidTransactionSignature: (signature: string): boolean => {
+    try {
+      const validSignature = isValidString(signature, 'signature', 64);
+      // Solana transaction signatures are base58 encoded and roughly 88 characters
+      return validSignature.length >= 64 && validSignature.length <= 128;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  /**
+   * Run comprehensive diagnostics
+   */
+  runDiagnostics: async (connection: Connection): Promise<{
+    rpcHealth: { healthy: boolean; responseTime: number };
+    performanceReport: any;
+    timestamp: string;
+  }> => {
+    const validConnection = isValidConnection(connection);
+
+    const rpcHealth = await SolanaUtils.checkRPCHealth(validConnection);
+    const performanceReport = await SolanaUtils.generatePerformanceReport(validConnection);
+
+    return {
+      rpcHealth,
+      performanceReport,
+      timestamp: new Date().toISOString()
+    };
+  }
+};
+
+// Deprecated class kept for backward compatibility - use SolanaUtils instead
+export class SniperBotUtils {
+  private connection: Connection;
+
+  constructor(connection: Connection) {
+    this.connection = isValidConnection(connection, 'connection');
+    console.warn('SniperBotUtils is deprecated. Use SolanaUtils instead for pure, stateless functions.');
+  }
+
+  async isValidTokenMint(mintAddress: string): Promise<boolean> {
+    return SolanaUtils.isValidTokenMint(mintAddress);
+  }
+
+  async getTokenBalance(tokenMint: string, walletAddress: string): Promise<number> {
+    return SolanaUtils.getTokenBalance(this.connection, tokenMint, walletAddress);
+  }
+
+  async getWalletBalance(walletAddress: string): Promise<number> {
+    return SolanaUtils.getWalletBalance(this.connection, walletAddress);
+  }
+
+  async validateDeveloperAddress(address: string): Promise<boolean> {
+    return SolanaUtils.validateDeveloperAddress(this.connection, address);
+  }
+
+  async getRecentTransactions(address: string, limit: number = 10): Promise<any[]> {
+    return SolanaUtils.getRecentTransactions(this.connection, address, limit);
+  }
+
+  async checkRPCHealth(): Promise<boolean> {
+    const health = await SolanaUtils.checkRPCHealth(this.connection);
+    return health.healthy;
+  }
+
+  async estimateTransactionFee(instructions: any[]): Promise<number> {
+    return SolanaUtils.estimateTransactionFee(instructions.length);
+  }
+
+  formatSOL(lamports: number): string {
+    return SolanaUtils.formatSOL(lamports);
+  }
+
+  formatTokenAmount(amount: number, decimals: number = 9): string {
+    return SolanaUtils.formatTokenAmount(amount, decimals);
+  }
+
+  async generatePerformanceReport(): Promise<any> {
+    return SolanaUtils.generatePerformanceReport(this.connection);
+  }
+
   async runDiagnostics(): Promise<void> {
     console.log('🔍 Running Sniper Bot Diagnostics...\n');
 
-    // Check RPC health
+    const results = await SolanaUtils.runDiagnostics(this.connection);
+    
     console.log('1. Checking RPC Health...');
-    const rpcHealth = await this.checkRPCHealth();
-    console.log(`   RPC Health: ${rpcHealth ? '✅ Healthy' : '❌ Unhealthy'}\n`);
+    console.log(`   RPC Health: ${results.rpcHealth.healthy ? '✅ Healthy' : '❌ Unhealthy'} (${results.rpcHealth.responseTime}ms)\n`);
 
-    // Get latest blockhash
-    console.log('2. Checking Latest Blockhash...');
-    try {
-      const blockhash = await this.connection.getLatestBlockhash();
-      console.log(`   Latest Blockhash: ${blockhash.blockhash}\n`);
-    } catch (error) {
-      console.log(`   ❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
-    }
-
-    // Generate performance report
-    console.log('3. Generating Performance Report...');
-    const report = await this.generatePerformanceReport();
-    console.log('   Performance Report:', JSON.stringify(report, null, 2), '\n');
+    console.log('2. Performance Report:');
+    console.log('   ', JSON.stringify(results.performanceReport, null, 2), '\n');
 
     console.log('🏁 Diagnostics Complete!');
+  }
+
+  // Deprecated methods removed in favor of pure functions
+  async monitorToken(tokenMint: string, duration: number = 60000): Promise<void> {
+    console.warn('monitorToken is deprecated and has been removed for stateless architecture');
   }
 }
 

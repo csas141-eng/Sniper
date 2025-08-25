@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": 1756144565403,
+  "timestamp": 1756145321022,
   "activeSnipes": [
     {
       "tokenMint": "SNIPE2...",
@@ -16,15 +16,6 @@
       "amount": 0.05,
       "platform": "pumpfun",
       "status": "pending"
-    },
-    {
-      "tokenMint": "SNIPE1...",
-      "startTime": 1756144505407,
-      "targetDeveloper": "DEV123...",
-      "amount": 0.01,
-      "platform": "pumpfun",
-      "status": "completed",
-      "txHash": "tx123..."
     },
     {
       "tokenMint": "SNIPE2...",
@@ -76,14 +67,14 @@
   },
   "runtimeStats": {
     "startTime": 1756130508201,
-    "uptime": 13997207,
-    "lastHealthCheck": 1756144505408,
+    "uptime": 0,
+    "lastHealthCheck": 1756145081014,
     "memoryUsage": {
-      "rss": 46448640,
-      "heapTotal": 4694016,
-      "heapUsed": 4457176,
-      "external": 1419454,
-      "arrayBuffers": 10515
+      "rss": 72355840,
+      "heapTotal": 30658560,
+      "heapUsed": 13779264,
+      "external": 1950410,
+      "arrayBuffers": 19411
     },
     "wsConnections": {
       "pumpfun": true,

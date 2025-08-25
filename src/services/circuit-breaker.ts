@@ -25,12 +25,15 @@ export interface TradeResult {
   timestamp: Date;
 }
 
+export type CircuitBreakerStateChangeCallback = (state: 'opened' | 'closed' | 'half-open', reason?: string) => void | Promise<void>;
+
 /**
  * Circuit breaker for trading operations to prevent catastrophic losses
  */
 export class CircuitBreaker {
   private state: CircuitBreakerState;
   private config: any;
+  private stateChangeCallbacks: CircuitBreakerStateChangeCallback[] = [];
 
   constructor() {
     this.config = configManager.getConfig().circuitBreaker || {};
@@ -44,6 +47,40 @@ export class CircuitBreaker {
 
     // Reset daily counters if needed
     this.resetDailyCountersIfNeeded();
+  }
+
+  /**
+   * Register a callback for state changes (e.g., Discord, Slack notifications)
+   */
+  onStateChange(callback: CircuitBreakerStateChangeCallback): void {
+    this.stateChangeCallbacks.push(callback);
+  }
+
+  /**
+   * Remove a state change callback
+   */
+  removeStateChangeCallback(callback: CircuitBreakerStateChangeCallback): void {
+    const index = this.stateChangeCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.stateChangeCallbacks.splice(index, 1);
+    }
+  }
+
+  /**
+   * Execute all state change callbacks
+   */
+  private async executeStateChangeCallbacks(state: 'opened' | 'closed' | 'half-open', reason?: string): Promise<void> {
+    for (const callback of this.stateChangeCallbacks) {
+      try {
+        await callback(state, reason);
+      } catch (error) {
+        logger.error('State change callback failed', { 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          state,
+          reason
+        });
+      }
+    }
   }
 
   /**
@@ -70,6 +107,11 @@ export class CircuitBreaker {
         this.state.isOpen = false;
         this.saveState();
         logger.logCircuitBreakerEvent('half-open', 'Attempting recovery');
+        
+        // Execute state change callbacks
+        this.executeStateChangeCallbacks('half-open', 'Attempting recovery').catch(error => {
+          logger.error('Failed to execute state change callbacks', { error: error.message });
+        });
       }
     }
 
@@ -132,6 +174,11 @@ export class CircuitBreaker {
       this.state.isHalfOpen = false;
       this.state.failureCount = 0;
       logger.logCircuitBreakerEvent('closed', 'Recovery successful');
+      
+      // Execute state change callbacks
+      this.executeStateChangeCallbacks('closed', 'Recovery successful').catch(error => {
+        logger.error('Failed to execute state change callbacks', { error: error.message });
+      });
     }
 
     logger.info('Trade success recorded', {
@@ -211,6 +258,11 @@ export class CircuitBreaker {
     this.state.nextAttemptTime = Date.now() + (this.config.recoveryTimeMs || 300000); // 5 min default
 
     logger.logCircuitBreakerEvent('opened', reason);
+    
+    // Execute state change callbacks
+    this.executeStateChangeCallbacks('opened', reason).catch(error => {
+      logger.error('Failed to execute state change callbacks', { error: error.message });
+    });
     
     // Send notification
     try {

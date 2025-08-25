@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": 1756144535402,
+  "timestamp": 1756145315418,
   "activeSnipes": [
     {
       "tokenMint": "SNIPE2...",
@@ -16,15 +16,6 @@
       "amount": 0.05,
       "platform": "pumpfun",
       "status": "pending"
-    },
-    {
-      "tokenMint": "SNIPE1...",
-      "startTime": 1756144505407,
-      "targetDeveloper": "DEV123...",
-      "amount": 0.01,
-      "platform": "pumpfun",
-      "status": "completed",
-      "txHash": "tx123..."
     },
     {
       "tokenMint": "SNIPE2...",

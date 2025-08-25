@@ -83,3 +83,13 @@
 {"level":"INFO","message":"WebSocket connection status updated","timestamp":"2025-08-25T17:55:05.409Z","context":{"name":"raydium","connected":false}}
 {"level":"INFO","message":"Config reload recorded","timestamp":"2025-08-25T17:55:05.409Z","context":{"totalReloads":2}}
 {"level":"INFO","message":"Removed active snipe from state","timestamp":"2025-08-25T17:56:05.408Z","context":{"tokenMint":"SNIPE1...","remainingActive":3}}
+{"level":"INFO","message":"Bot state loaded from file","timestamp":"2025-08-25T18:04:41.013Z","context":{"activeSnipes":3,"poolsCached":2,"totalTrades":6,"lastSaved":"2025-08-25T18:04:35.414Z"}}
+{"level":"INFO","message":"State persistence auto-save started","timestamp":"2025-08-25T18:04:41.014Z","context":{"intervalMs":30000}}
+{"level":"WARN","message":"Circuit breaker manually reset","timestamp":"2025-08-25T18:04:41.077Z"}
+{"level":"ERROR","message":"Circuit breaker OPENED: Single trade loss threshold exceeded: 0.8 SOL","timestamp":"2025-08-25T18:04:41.078Z","context":{"circuitBreaker":"opened","reason":"Single trade loss threshold exceeded: 0.8 SOL"}}
+{"level":"WARN","message":"Circuit breaker manually reset","timestamp":"2025-08-25T18:06:47.963Z"}
+{"level":"ERROR","message":"Circuit breaker OPENED: Single trade loss threshold exceeded: 0.7 SOL","timestamp":"2025-08-25T18:06:47.964Z","context":{"circuitBreaker":"opened","reason":"Single trade loss threshold exceeded: 0.7 SOL"}}
+{"level":"INFO","message":"Trade success recorded","timestamp":"2025-08-25T18:06:48.166Z","context":{"tokenMint":"CALLBACK_TEST","amount":0.01,"profitLoss":0.005,"dailyLoss":0.695,"dailyTrades":2}}
+{"level":"WARN","message":"Circuit breaker manually reset","timestamp":"2025-08-25T18:07:25.450Z"}
+{"level":"ERROR","message":"Circuit breaker OPENED: Single trade loss threshold exceeded: 0.7 SOL","timestamp":"2025-08-25T18:07:25.451Z","context":{"circuitBreaker":"opened","reason":"Single trade loss threshold exceeded: 0.7 SOL"}}
+{"level":"INFO","message":"Trade success recorded","timestamp":"2025-08-25T18:07:25.653Z","context":{"tokenMint":"CALLBACK_TEST","amount":0.01,"profitLoss":0.005,"dailyLoss":0.695,"dailyTrades":2}}

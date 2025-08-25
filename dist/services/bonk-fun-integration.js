@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BonkFunIntegration = void 0;
+const web3_js_1 = require("@solana/web3.js");
+const letsbonk_sdk_1 = require("../letsbonk-sdk");
 const fs_1 = __importDefault(require("fs"));
 // Load configuration from config.json
 const loadConfig = () => {
@@ -23,15 +25,18 @@ const CONFIG = loadConfig();
 class BonkFunIntegration {
     connection;
     isInitialized = false;
+    letsBonkSDK = null;
     constructor(connection) {
         this.connection = connection;
         this.initializeSDK();
     }
     async initializeSDK() {
         try {
-            // For now, we'll use a simpler approach without the problematic SDK
+            // Create a temporary wallet for SDK initialization
+            const tempWallet = web3_js_1.Keypair.generate();
+            this.letsBonkSDK = new letsbonk_sdk_1.LetsBonkSDK(this.connection, tempWallet);
             this.isInitialized = true;
-            console.log('✅ Bonk.fun integration initialized successfully');
+            console.log('✅ Bonk.fun integration with LetsBonkSDK initialized successfully');
         }
         catch (error) {
             console.error('❌ Failed to initialize Bonk.fun integration:', error);
@@ -79,19 +84,30 @@ class BonkFunIntegration {
     }
     // Execute buy on new token launch
     async buyNewToken(launch, wallet, amount) {
-        if (!this.isInitialized) {
+        if (!this.isInitialized || !this.letsBonkSDK) {
             return { success: false, error: 'Bonk.fun integration not initialized' };
         }
         try {
-            console.log(`🚀 Buying ${launch.symbol} (${launch.mint}) on Bonk.fun`);
+            console.log(`🚀 Buying ${launch.symbol} (${launch.mint}) on Bonk.fun using real SDK`);
             // Convert SOL amount to lamports
-            const buyAmountLamports = amount * 1e9;
-            // For now, return success (actual implementation would use Bonk.fun SDK)
-            console.log(`✅ Simulated buy of ${launch.symbol} for ${amount} SOL`);
-            return {
-                success: true,
-                signature: 'simulated_signature'
-            };
+            const buyAmountLamports = BigInt(Math.floor(amount * 1e9));
+            const mintPubkey = new web3_js_1.PublicKey(launch.mint);
+            // Use the actual LetsBonkSDK for real trading
+            const result = await this.letsBonkSDK.buy(wallet, mintPubkey, buyAmountLamports, BigInt(0) // minimum out - could be calculated based on slippage
+            );
+            if (result.success && result.data?.signature) {
+                console.log(`✅ Successfully bought ${launch.symbol} for ${amount} SOL, signature: ${result.data.signature}`);
+                return {
+                    success: true,
+                    signature: result.data.signature
+                };
+            }
+            else {
+                return {
+                    success: false,
+                    error: 'Buy operation failed through SDK'
+                };
+            }
         }
         catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
