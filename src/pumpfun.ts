@@ -1,5 +1,10 @@
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, VersionedTransaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, AccountLayout, MintLayout } from '@solana/spl-token';
+import { retryService } from './services/retry-service';
+import { logger } from './services/structured-logger';
+import { configManager } from './services/config-manager';
+import { circuitBreaker } from './services/circuit-breaker';
+import { statePersistence } from './services/state-persistence';
 
 // ✅ IMPROVED: Actual Pump.fun program ID
 const PUMP_FUN_PROGRAM_ID = new PublicKey('PFundrQfYq9CoMZt6CJ1TH7JcGj1kfXyc6q7J5QXvCn');
@@ -398,34 +403,7 @@ export class PumpFun {
     }
   }
 
-  // ✅ NEW: Enhanced error handling with retry mechanisms
-  async executeWithRetry<T>(
-    operation: () => Promise<T>,
-    maxRetries: number = 3,
-    baseDelay: number = 1000
-  ): Promise<T> {
-    let lastError: Error;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error as Error;
-        
-        if (attempt === maxRetries) {
-          throw new Error(`Operation failed after ${maxRetries} attempts. Last error: ${lastError.message}`);
-        }
-        
-        // Exponential backoff with jitter
-        const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
-        console.log(`Attempt ${attempt} failed, retrying in ${Math.round(delay)}ms...`);
-        
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    
-    throw lastError!;
-  }
+  // ✅ Removed local executeWithRetry - now using centralized retry service
 
   // ✅ NEW: Circuit breaker for extreme market conditions
   private circuitBreakerEnabled: boolean = false;
@@ -461,18 +439,31 @@ export class PumpFun {
     this.circuitBreakerEnabled = false;
   }
 
-  // ✅ IMPROVED: Enhanced direct transaction execution with circuit breaker
+  // ✅ IMPROVED: Enhanced direct transaction execution with centralized circuit breaker
   async executePumpTransaction(action: string, mint: string, amount: number, slippage: number = 0.15): Promise<string | null> {
     try {
-      // Check circuit breaker
-      if (!(await this.checkCircuitBreaker())) {
-        throw new Error('Circuit breaker is enabled due to previous failures');
+      // Check centralized circuit breaker
+      const canTrade = circuitBreaker.canTrade();
+      if (!canTrade.allowed) {
+        logger.warn('Trade blocked by circuit breaker', { reason: canTrade.reason, mint });
+        statePersistence.recordError('CIRCUIT_BREAKER', 'pumpfun', new Error(canTrade.reason || 'Circuit breaker active'));
+        return null;
       }
       
       const signerPublicKey = this.wallet.publicKey.toBase58();
       
-      // Execute with retry mechanism
-      const response = await this.executeWithRetry(async () => {
+      // Add active snipe to state persistence
+      statePersistence.addActiveSnipe({
+        tokenMint: mint,
+        startTime: Date.now(),
+        amount: amount,
+        platform: 'pumpfun',
+        status: 'pending'
+      });
+      
+      // Execute with centralized retry mechanism
+      const startTime = Date.now();
+      const response = await retryService.executeWithRetry(async () => {
         return await fetch(`https://pumpportal.fun/api/trade-local`, {
           method: "POST",
           headers: {
@@ -489,40 +480,116 @@ export class PumpFun {
             pool: "pump"
           })
         });
+      }, {
+        apiName: 'pumpfun',
+        endpoint: '/api/trade-local',
+        operation: action
       });
+      
+      const responseTime = Date.now() - startTime;
       
       if (response.status === 200) {
         const data = await response.arrayBuffer();
         const tx = VersionedTransaction.deserialize(new Uint8Array(data));
         tx.sign([this.wallet]);
         
+        // Update snipe status to executing
+        statePersistence.updateSnipeStatus(mint, 'executing');
+        
         let signature;
         try {
-          signature = await this.connection.sendTransaction(tx, { 
-            skipPreflight: false,
-            maxRetries: 3 
+          signature = await retryService.executeWithRetry(async () => {
+            return await this.connection.sendTransaction(tx, { 
+              skipPreflight: false,
+              maxRetries: 2 
+            });
+          }, {
+            apiName: 'solana',
+            endpoint: 'sendTransaction',
+            operation: 'pumpfun-swap'
           });
-          console.log(`Transaction: https://solscan.io/tx/${signature}`);
           
-          // Record success
-          this.recordSuccess();
+          logger.logTransaction(action as 'buy' | 'sell', mint, amount, signature, true);
+          logger.logApiSuccess('pumpfun', '/api/trade-local', action, responseTime);
           
+          // Record successful trade
+          circuitBreaker.recordTrade({
+            success: true,
+            tokenMint: mint,
+            amount: amount,
+            timestamp: new Date()
+          });
+          
+          statePersistence.updateSnipeStatus(mint, 'completed', signature);
+          statePersistence.recordSuccess();
+          
+          console.log(`✅ Pump.fun transaction: https://solscan.io/tx/${signature}`);
           return signature;
-        } catch (e) {
-          console.error('Transaction failed:', e);
-          this.recordFailure();
+          
+        } catch (txError) {
+          logger.logTransaction(action as 'buy' | 'sell', mint, amount, undefined, false, { 
+            error: txError instanceof Error ? txError.message : 'Unknown error' 
+          });
+          
+          // Record failed trade
+          circuitBreaker.recordTrade({
+            success: false,
+            tokenMint: mint,
+            amount: amount,
+            profitLoss: -amount, // Assume full loss for failed transaction
+            error: txError instanceof Error ? txError.message : 'Transaction failed',
+            timestamp: new Date()
+          });
+          
+          statePersistence.updateSnipeStatus(mint, 'failed', undefined, txError instanceof Error ? txError.message : 'Transaction failed');
+          statePersistence.recordError('TRANSACTION_FAILED', 'solana', txError instanceof Error ? txError : new Error('Transaction failed'));
+          
+          logger.error('Pump.fun transaction execution failed', { 
+            mint, 
+            action, 
+            error: txError instanceof Error ? txError.message : 'Unknown error' 
+          });
           return null;
         }
       } else {
-        console.log(`Pump.fun API error: ${response.statusText}`);
-        this.recordFailure();
+        const errorText = await response.text();
+        logger.logApiFailure('pumpfun', '/api/trade-local', action, new Error(errorText), response.status);
+        
+        // Record API failure
+        circuitBreaker.recordTrade({
+          success: false,
+          tokenMint: mint,
+          amount: amount,
+          error: `API error: ${response.status} - ${errorText}`,
+          timestamp: new Date()
+        });
+        
+        statePersistence.updateSnipeStatus(mint, 'failed', undefined, `API error: ${response.status}`);
+        statePersistence.recordError('API_ERROR', 'pumpfun', new Error(errorText));
+        
+        console.log(`❌ Pump.fun API error: ${response.status} - ${errorText}`);
         return null;
       }
     } catch (error) {
-      // Record failure
-      this.recordFailure();
+      logger.logApiFailure('pumpfun', '/api/trade-local', action, error instanceof Error ? error : new Error('Unknown error'));
       
-      console.error('Error executing Pump.fun transaction:', error);
+      // Record failure
+      circuitBreaker.recordTrade({
+        success: false,
+        tokenMint: mint,
+        amount: amount,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      });
+      
+      statePersistence.updateSnipeStatus(mint, 'failed', undefined, error instanceof Error ? error.message : 'Unknown error');
+      statePersistence.recordError('EXECUTION_ERROR', 'pumpfun', error instanceof Error ? error : new Error('Unknown error'));
+      
+      logger.error('Error executing Pump.fun transaction', { 
+        mint, 
+        action, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
       return null;
     }
   }
