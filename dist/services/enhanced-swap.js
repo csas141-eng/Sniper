@@ -130,6 +130,12 @@ const loadConfig = () => {
     }
 };
 // Enhanced rate limiting with configurable settings and 429 handling
+// This class helps prevent hitting API rate limits by tracking requests over time windows
+// Key features:
+// - Separate limits for different methods (Jupiter, Pump.fun, etc.)
+// - Configurable time windows and request limits
+// - Proactive rate limiting (waits before hitting limits)
+// - Prevents log spam with cooldown periods between warnings
 class RateLimiter {
     requestCounts = new Map();
     lastRateLimitWarning = new Map();
@@ -231,6 +237,12 @@ catch (error) {
 }
 const rateLimiter = new RateLimiter(rateLimiterConfig);
 // Enhanced retry logic with specific HTTP 429 handling and configurable settings
+// This function provides robust retry mechanisms for external API calls
+// Key features:
+// - Detects HTTP 429 (Too Many Requests) errors and applies appropriate backoff
+// - Uses exponential backoff to avoid overwhelming rate-limited services  
+// - Configurable retry counts, delays, and backoff strategies
+// - Provides clear logging for debugging rate limit issues
 async function executeWithRetry(operation, method = 'general', maxRetries = 3, // Made configurable
 baseDelay = 1000, // Reduced default base delay
 config) {
@@ -250,6 +262,7 @@ config) {
         catch (error) {
             lastError = error;
             // ✅ NEW: Special handling for HTTP 429 (Too Many Requests) errors
+            // HTTP 429 indicates we're hitting rate limits - need longer delays and special handling
             const is429Error = error instanceof Error && (error.message.includes('429') ||
                 error.message.includes('Too Many Requests') ||
                 error.message.includes('Rate limit') ||

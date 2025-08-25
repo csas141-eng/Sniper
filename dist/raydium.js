@@ -312,6 +312,8 @@ class Raydium {
         return null;
     }
     // ✅ IMPROVED: Enhanced developer extraction with better pattern matching and reduced log spam
+    // This method analyzes Raydium transaction logs to find the developer/creator address
+    // It uses multiple patterns to identify potential developer addresses and validates them
     extractDeveloperFromLogs(logs) {
         // Filter out generic program logs to reduce noise
         const contentLogs = logs.filter(log => !log.includes('Program invoke:') &&
@@ -404,7 +406,9 @@ class Raydium {
             return false;
         }
     }
-    // ✅ ENHANCED: Extract developer address from transaction accounts as fallback with improved analysis
+    // ✅ ENHANCED: Extract developer address from transaction accounts as fallback with improved analysis  
+    // When log parsing fails, this method analyzes the transaction itself to find the developer
+    // It looks at signers, fee payers, and writable accounts to identify the most likely developer
     async extractDeveloperFromTransaction(signature) {
         try {
             console.log(`🔍 Attempting transaction-based developer extraction for: ${signature}`);
