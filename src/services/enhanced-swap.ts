@@ -5,6 +5,7 @@ import { riskManager } from './risk-manager';
 import { notificationService } from './notifications';
 import { PoolMonitor } from './pool-monitor';
 import { TransactionSimulator } from './transaction-simulator';
+import { rateLimiter } from './rateLimiter';
 import { Liquidity, jsonInfo2PoolKeys, LiquidityPoolKeys, Percent, Token, TokenAmount, ApiPoolInfoV4 } from '@raydium-io/raydium-sdk';
 
 // Load configuration from config.json
@@ -71,7 +72,7 @@ const loadConfig = () => {
     console.error('Error loading config.json, using defaults:', error);
     // Fallback to default config
     return {
-      SOLANA_RPC_URL: 'https://api.mainnet-beta.solana.com',
+      SOLANA_RPC_URL: 'https://solana-mainnet.core.chainstack.com/d957d9f011a51a960a42e5b247223dd4',
       walletPath: './my-wallet.json',
       AMOUNT_TO_BUY: 0.01,
       SLIPPAGE: 30,
@@ -146,58 +147,6 @@ export interface SwapResult {
   executionTime: number;
 }
 
-// Rate limiting for public Solana API
-class RateLimiter {
-  private requestCounts: Map<string, number[]> = new Map();
-  private readonly windowMs = 10000; // 10 seconds
-  private readonly maxRequestsPerWindow = 100;
-  private readonly maxRequestsPerMethod = 40;
-  
-  async waitForRateLimit(method: string = 'general'): Promise<void> {
-    const now = Date.now();
-    const windowStart = now - this.windowMs;
-    
-    // Clean old timestamps
-    if (!this.requestCounts.has(method)) {
-      this.requestCounts.set(method, []);
-    }
-    if (!this.requestCounts.has('general')) {
-      this.requestCounts.set('general', []);
-    }
-    
-    const methodRequests = this.requestCounts.get(method)!;
-    const generalRequests = this.requestCounts.get('general')!;
-    
-    // Remove old timestamps
-    const filteredMethodRequests = methodRequests.filter(time => time > windowStart);
-    const filteredGeneralRequests = generalRequests.filter(time => time > windowStart);
-    
-    // Check if we're at the limit
-    if (filteredMethodRequests.length >= this.maxRequestsPerMethod) {
-      const oldestRequest = Math.min(...filteredMethodRequests);
-      const waitTime = this.windowMs - (now - oldestRequest) + 100;
-      console.log(`⏳ Rate limit reached for ${method}, waiting ${Math.round(waitTime)}ms...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-    
-    if (filteredGeneralRequests.length >= this.maxRequestsPerWindow) {
-      const oldestRequest = Math.min(...filteredGeneralRequests);
-      const waitTime = this.windowMs - (now - oldestRequest) + 100;
-      console.log(`⏳ General rate limit reached, waiting ${Math.round(waitTime)}ms...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-    
-    // Add current request
-    filteredMethodRequests.push(now);
-    filteredGeneralRequests.push(now);
-    
-    this.requestCounts.set(method, filteredMethodRequests);
-    this.requestCounts.set('general', filteredGeneralRequests);
-  }
-}
-
-const rateLimiter = new RateLimiter();
-
 // Enhanced retry logic with rate limiting
 async function executeWithRetry<T>(
   operation: () => Promise<T>,
@@ -209,10 +158,19 @@ async function executeWithRetry<T>(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Wait for rate limit before each attempt
+      // Wait for rate limit before each attempt (reserves a connection slot)
       await rateLimiter.waitForRateLimit(method);
       
-      return await operation();
+      try {
+        const result = await operation();
+        // Release connection slot on success
+        rateLimiter.releaseConnection();
+        return result;
+      } catch (error) {
+        // Release connection slot on operation error
+        rateLimiter.releaseConnection();
+        throw error;
+      }
     } catch (error) {
       lastError = error as Error;
       

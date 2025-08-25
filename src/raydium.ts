@@ -1,5 +1,6 @@
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, AccountLayout, MintLayout } from '@solana/spl-token';
+import { rateLimiter } from './services/rateLimiter';
 
 // ✅ IMPROVED: Actual Raydium program IDs and constants
 const RAYDIUM_AMM_PROGRAM_ID = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');

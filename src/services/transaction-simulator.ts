@@ -1,5 +1,6 @@
 import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import fs from 'fs';
+import { rateLimiter } from './rateLimiter';
 
 // Load configuration from config.json
 const loadConfig = () => {

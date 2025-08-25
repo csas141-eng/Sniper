@@ -13,6 +13,7 @@ import { EnhancedSwapService } from './services/enhanced-swap';
 import { transactionParser } from './services/transaction-parser';
 import { TokenValidator } from './services/token-validator';
 import { BonkFunIntegration } from './services/bonk-fun-integration';
+import { rateLimiter } from './services/rateLimiter';
 import { ProfitTaker, Position } from './services/profit-taker';
 
 // NEW: Updated endpoints for PumpPortal
@@ -139,7 +140,7 @@ const loadUserConfig = () => {
     console.error('Error loading config.json, using defaults:', error);
     // Return default config if file loading fails
     return {
-      SOLANA_RPC_URL: 'https://api.mainnet-beta.solana.com',
+      SOLANA_RPC_URL: 'https://solana-mainnet.core.chainstack.com/d957d9f011a51a960a42e5b247223dd4',
       walletPath: './my-wallet.json',
       AMOUNT_TO_BUY: 0.00001,
       SLIPPAGE: 0.3,
