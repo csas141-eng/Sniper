@@ -1,5 +1,6 @@
 {
-  "solanaRpcUrl": "https://api.mainnet-beta.solana.com",
+  "solanaRpcUrl": "https://solana-mainnet.core.chainstack.com/d957d9f011a51a960a42e5b247223dd4",
+  "solanaWsUrl": "wss://solana-mainnet.core.chainstack.com/d957d9f011a51a960a42e5b247223dd4",
   "privateKey": "privatekey",
   "targetDevelopers": [{"address": "8tY23wHGVvsAnBWUicc1DqnmCh8ka9VbohqsAU8TYrz4"}],
   "buyAmountSol": 0.01,

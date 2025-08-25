@@ -10,6 +10,7 @@ const fs_1 = __importDefault(require("fs"));
 const risk_manager_1 = require("./risk-manager");
 const notifications_1 = require("./notifications");
 const transaction_simulator_1 = require("./transaction-simulator");
+const rateLimiter_1 = require("./rateLimiter");
 // Load configuration from config.json
 const loadConfig = () => {
     try {
@@ -74,7 +75,7 @@ const loadConfig = () => {
         console.error('Error loading config.json, using defaults:', error);
         // Fallback to default config
         return {
-            SOLANA_RPC_URL: 'https://api.mainnet-beta.solana.com',
+            SOLANA_RPC_URL: 'https://solana-mainnet.core.chainstack.com/d957d9f011a51a960a42e5b247223dd4',
             walletPath: './my-wallet.json',
             AMOUNT_TO_BUY: 0.01,
             SLIPPAGE: 30,
@@ -129,48 +130,6 @@ const loadConfig = () => {
         };
     }
 };
-// Rate limiting for public Solana API
-class RateLimiter {
-    requestCounts = new Map();
-    windowMs = 10000; // 10 seconds
-    maxRequestsPerWindow = 100;
-    maxRequestsPerMethod = 40;
-    async waitForRateLimit(method = 'general') {
-        const now = Date.now();
-        const windowStart = now - this.windowMs;
-        // Clean old timestamps
-        if (!this.requestCounts.has(method)) {
-            this.requestCounts.set(method, []);
-        }
-        if (!this.requestCounts.has('general')) {
-            this.requestCounts.set('general', []);
-        }
-        const methodRequests = this.requestCounts.get(method);
-        const generalRequests = this.requestCounts.get('general');
-        // Remove old timestamps
-        const filteredMethodRequests = methodRequests.filter(time => time > windowStart);
-        const filteredGeneralRequests = generalRequests.filter(time => time > windowStart);
-        // Check if we're at the limit
-        if (filteredMethodRequests.length >= this.maxRequestsPerMethod) {
-            const oldestRequest = Math.min(...filteredMethodRequests);
-            const waitTime = this.windowMs - (now - oldestRequest) + 100;
-            console.log(`⏳ Rate limit reached for ${method}, waiting ${Math.round(waitTime)}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-        if (filteredGeneralRequests.length >= this.maxRequestsPerWindow) {
-            const oldestRequest = Math.min(...filteredGeneralRequests);
-            const waitTime = this.windowMs - (now - oldestRequest) + 100;
-            console.log(`⏳ General rate limit reached, waiting ${Math.round(waitTime)}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-        // Add current request
-        filteredMethodRequests.push(now);
-        filteredGeneralRequests.push(now);
-        this.requestCounts.set(method, filteredMethodRequests);
-        this.requestCounts.set('general', filteredGeneralRequests);
-    }
-}
-const rateLimiter = new RateLimiter();
 // Enhanced retry logic with rate limiting
 async function executeWithRetry(operation, method = 'general', maxRetries = 2, // Reduced for public API
 baseDelay = 2000 // Increased delay
@@ -178,9 +137,19 @@ baseDelay = 2000 // Increased delay
     let lastError;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            // Wait for rate limit before each attempt
-            await rateLimiter.waitForRateLimit(method);
-            return await operation();
+            // Wait for rate limit before each attempt (reserves a connection slot)
+            await rateLimiter_1.rateLimiter.waitForRateLimit(method);
+            try {
+                const result = await operation();
+                // Release connection slot on success
+                rateLimiter_1.rateLimiter.releaseConnection();
+                return result;
+            }
+            catch (error) {
+                // Release connection slot on operation error
+                rateLimiter_1.rateLimiter.releaseConnection();
+                throw error;
+            }
         }
         catch (error) {
             lastError = error;

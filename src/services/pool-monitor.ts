@@ -5,6 +5,7 @@ import { TransactionResponse } from '@solana/web3.js';
 import { SystemProgram } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { rateLimiter } from './rateLimiter';
 
 // Configuration will be passed from SniperBot
 
