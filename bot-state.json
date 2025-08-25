@@ -1,0 +1,62 @@
+{
+  "version": "1.0.0",
+  "timestamp": 1756130628205,
+  "activeSnipes": [
+    {
+      "tokenMint": "SNIPE2...",
+      "startTime": 1756130508208,
+      "amount": 0.02,
+      "platform": "raydium",
+      "status": "executing"
+    }
+  ],
+  "errorCounters": {
+    "totalErrors": 2,
+    "errorsByType": {
+      "NETWORK_ERROR": 1,
+      "API_ERROR": 1
+    },
+    "errorsByApi": {
+      "solana": 1,
+      "pumpfun": 1
+    },
+    "lastErrorTime": 1756130508208,
+    "consecutiveErrors": 0
+  },
+  "poolsCache": [
+    {
+      "mint": "POOL1...",
+      "poolAddress": "POOLADDR1...",
+      "liquidity": 10000,
+      "platform": "raydium",
+      "discoveredAt": 1756130508209,
+      "lastUpdated": 1756130508209
+    }
+  ],
+  "profitStats": {
+    "totalTrades": 2,
+    "successfulTrades": 1,
+    "totalProfit": 0.05,
+    "totalLoss": 0.01,
+    "bestTrade": 0.05,
+    "worstTrade": -0.01,
+    "avgTradeSize": 0.01
+  },
+  "runtimeStats": {
+    "startTime": 1756130508201,
+    "uptime": 8,
+    "lastHealthCheck": 1756130508209,
+    "memoryUsage": {
+      "rss": 46448640,
+      "heapTotal": 4694016,
+      "heapUsed": 4454080,
+      "external": 1419454,
+      "arrayBuffers": 10515
+    },
+    "wsConnections": {
+      "pumpfun": true,
+      "raydium": false
+    },
+    "configReloads": 1
+  }
+}
