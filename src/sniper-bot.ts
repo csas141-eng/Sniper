@@ -14,6 +14,10 @@ import { transactionParser } from './services/transaction-parser';
 import { TokenValidator } from './services/token-validator';
 import { BonkFunIntegration } from './services/bonk-fun-integration';
 import { ProfitTaker, Position } from './services/profit-taker';
+import { addressBlacklist } from './services/address-blacklist';
+import { transactionAnomalyMonitor } from './services/transaction-anomaly-monitor';
+import { userConfirmationService } from './services/user-confirmation';
+import { createBalanceValidator } from './services/balance-validator';
 
 // NEW: Updated endpoints for PumpPortal
 const PUMP_PORTAL_WS_URL = 'wss://pumpportal.fun/api/data';
@@ -744,10 +748,79 @@ export class SniperBot {
     return true;
   }
 
-  // Enhanced snipe method with risk management
+  // Enhanced snipe method with comprehensive security checks
   async snipeToken(tokenMint: string, platform: string, developer?: string): Promise<SnipeResult> {
     try {
-      // Risk management check
+      console.log(`🔍 Starting security validation for ${tokenMint} on ${platform}`);
+      
+      // Step 1: Address blacklist validation
+      const addressesToValidate = [tokenMint];
+      if (developer) addressesToValidate.push(developer);
+      
+      const blacklistValidation = addressBlacklist.validateAddresses(addressesToValidate);
+      if (blacklistValidation.blacklisted.length > 0) {
+        const blacklistedInfo = blacklistValidation.blacklisted.map(item => 
+          `${item.address}: ${item.entry.reason}`
+        ).join(', ');
+        
+        const errorMsg = `Transaction blocked - blacklisted addresses detected: ${blacklistedInfo}`;
+        console.error(`🚫 ${errorMsg}`);
+        await notificationService.sendNotification(errorMsg, 'warning', { tokenMint, blacklisted: blacklistValidation.blacklisted });
+        
+        return {
+          success: false,
+          error: errorMsg,
+          tokenMint,
+          platform,
+          amount: this.buyAmountSol,
+          timestamp: Date.now(),
+          developer: developer || 'unknown'
+        };
+      }
+      
+      // Step 2: Balance validation for issuer (if developer provided)
+      if (developer) {
+        const balanceValidator = createBalanceValidator(this.connection);
+        const issuerValidation = await balanceValidator.validateIssuerBalance(developer, tokenMint);
+        
+        if (!issuerValidation.isValid) {
+          const errorMsg = `Issuer validation failed: ${issuerValidation.warnings.join(', ')}`;
+          console.warn(`⚠️  ${errorMsg}`);
+          
+          // Request user confirmation for risky issuer
+          const confirmResult = await userConfirmationService.requestConfirmation(
+            'risky_issuer_trade',
+            { 
+              issuer: developer, 
+              tokenMint, 
+              validation: issuerValidation,
+              platform,
+              amount: this.buyAmountSol
+            },
+            { 
+              riskLevel: issuerValidation.riskLevel, 
+              factors: issuerValidation.warnings,
+              recommendations: issuerValidation.recommendations,
+              autoConfirm: false 
+            }
+          );
+          
+          if (!confirmResult.confirmed) {
+            console.log(`❌ User rejected risky issuer trade for ${tokenMint}`);
+            return {
+              success: false,
+              error: 'User rejected risky issuer trade',
+              tokenMint,
+              platform,
+              amount: this.buyAmountSol,
+              timestamp: Date.now(),
+              developer: developer || 'unknown'
+            };
+          }
+        }
+      }
+      
+      // Step 3: Risk management check
       const riskCheck = riskManager.canExecuteTrade(this.buyAmountSol, tokenMint);
       if (!riskCheck.allowed) {
         const errorMsg = `Trade blocked by risk manager: ${riskCheck.errors.join(', ')}`;
@@ -759,15 +832,99 @@ export class SniperBot {
           tokenMint,
           platform,
           amount: this.buyAmountSol,
-          signature: undefined,
           timestamp: Date.now(),
           developer: developer || 'unknown'
         };
       }
 
+      // Step 4: Large trade confirmation
+      if (this.buyAmountSol > 1.0) {
+        const confirmResult = await userConfirmationService.requestConfirmation(
+          'large_trade',
+          { tokenMint, platform, amount: this.buyAmountSol, developer },
+          { riskLevel: 'medium', factors: ['Large trade amount'], recommendations: ['Consider reducing trade size'], autoConfirm: false }
+        );
+        
+        if (!confirmResult.confirmed) {
+          console.log(`❌ User rejected large trade for ${tokenMint}`);
+          return {
+            success: false,
+            error: 'User rejected large trade',
+            tokenMint,
+            platform,
+            amount: this.buyAmountSol,
+            timestamp: Date.now(),
+            developer: developer || 'unknown'
+          };
+        }
+      }
+
       console.log(`🎯 Starting snipe for ${tokenMint} on ${platform}`);
       
-      // Use enhanced swap service for better execution
+      // Step 5: Create and validate transaction
+      let transaction: Transaction | null;
+      try {
+        transaction = await this.createBuyTransaction(new PublicKey(tokenMint), platform);
+        if (!transaction) {
+          throw new Error('Failed to create transaction');
+        }
+      } catch (error) {
+        const errorMsg = `Transaction creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        console.error(`❌ ${errorMsg}`);
+        return {
+          success: false,
+          error: errorMsg,
+          tokenMint,
+          platform,
+          amount: this.buyAmountSol,
+          timestamp: Date.now(),
+          developer: developer || 'unknown'
+        };
+      }
+      
+      // Step 6: Transaction anomaly analysis
+      const anomalyResult = transactionAnomalyMonitor.analyzeTransaction(transaction, {
+        fromAddress: this.wallet.publicKey.toBase58(),
+        amount: this.buyAmountSol,
+        tokenMint
+      });
+      
+      if (anomalyResult.isAnomalous) {
+        console.warn(`🚨 Transaction anomalies detected: ${anomalyResult.triggeredPatterns.join(', ')}`);
+        
+        if (anomalyResult.riskScore >= 6) {
+          const confirmResult = await userConfirmationService.requestConfirmation(
+            'anomalous_transaction',
+            { 
+              tokenMint, 
+              patterns: anomalyResult.triggeredPatterns, 
+              riskScore: anomalyResult.riskScore,
+              recommendations: anomalyResult.recommendations
+            },
+            { 
+              riskLevel: anomalyResult.riskScore >= 8 ? 'critical' : 'high',
+              factors: anomalyResult.triggeredPatterns,
+              recommendations: anomalyResult.recommendations,
+              autoConfirm: false 
+            }
+          );
+          
+          if (!confirmResult.confirmed) {
+            console.log(`❌ User rejected anomalous transaction for ${tokenMint}`);
+            return {
+              success: false,
+              error: 'User rejected anomalous transaction',
+              tokenMint,
+              platform,
+              amount: this.buyAmountSol,
+              timestamp: Date.now(),
+              developer: developer || 'unknown'
+            };
+          }
+        }
+      }
+      
+      // Step 7: Execute swap with enhanced service
       const swapResult = await this.enhancedSwapService.executeSwap({
         inputMint: 'So11111111111111111111111111111111111111112', // SOL
         outputMint: tokenMint,
@@ -818,7 +975,6 @@ export class SniperBot {
           tokenMint,
           platform,
           amount: this.buyAmountSol,
-          signature: undefined,
           timestamp: Date.now(),
           developer: developer || 'unknown'
         };
@@ -834,7 +990,6 @@ export class SniperBot {
         tokenMint,
         platform,
         amount: this.buyAmountSol,
-        signature: undefined,
         timestamp: Date.now(),
         developer: developer || 'unknown'
       };

@@ -8,7 +8,12 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "clean": "rimraf dist",
-    "rebuild": "npm run clean && npm run build"
+    "rebuild": "npm run clean && npm run build",
+    "audit": "node scripts/audit-dependencies.js",
+    "audit:fix": "npm audit fix",
+    "audit:force": "npm audit fix --force",
+    "security": "npm run audit && npm run build",
+    "prestart": "npm run security"
   },
   "keywords": [
     "solana",
@@ -27,7 +32,7 @@
     "axios": "^1.6.0",
     "bs58": "^5.0.0",
     "letsbonkdotfun-sdk": "^1.1.1",
-    "node-telegram-bot-api": "^0.64.0",
+    "node-telegram-bot-api": "^0.63.0",
     "nodemailer": "^6.9.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",

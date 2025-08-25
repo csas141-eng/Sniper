@@ -1,31 +1,55 @@
-# Solana Sniper Bot - Enhanced Version
+# 🛡️ Solana Sniper Bot - Secure Enhanced Version
 
-A high-performance Solana sniper bot designed to automatically detect and snipe new tokens from designated developer addresses across multiple platforms including Pump.fun, Raydium, and LetsBonk.
+## ⚠️ CRITICAL SECURITY WARNING
 
-## 🚀 Key Improvements Made
+**Before using this bot, read the [SECURITY.md](./SECURITY.md) file carefully to protect yourself from phishing attacks and drainer contracts.**
 
-### 1. **Multi-Platform Support**
-- **Pump.fun Integration**: Real-time monitoring of Pump.fun token creation
-- **Raydium Integration**: Pool creation detection and automated sniping
-- **LetsBonk SDK**: Enhanced with priority fees and proper transaction handling
-- **WebSocket Support**: Pump Portal integration for fastest token detection
+🚨 **NEVER share your private keys or wallet files with anyone!**
+🚨 **Only use official RPC endpoints!**
+🚨 **Use dedicated trading wallets with limited funds!**
 
-### 2. **Enhanced Performance**
-- **Priority Fees**: Automatic priority fee calculation for faster transaction processing
-- **Compute Unit Optimization**: Optimized compute unit limits for better success rates
-- **Concurrent Sniping**: Support for multiple simultaneous snipes (configurable)
-- **Retry Logic**: Intelligent retry mechanism with exponential backoff
+A high-performance, security-first Solana sniper bot with comprehensive anti-drainer protections, designed to automatically detect and snipe new tokens from designated developer addresses across multiple platforms.
 
-### 3. **Better Error Handling**
-- **Transaction Validation**: Comprehensive transaction verification
-- **Liquidity Checks**: Pre-snipe liquidity validation
-- **Balance Monitoring**: Automatic balance checks and warnings
-- **Failed Transaction Tracking**: Detailed logging of failed transactions
+## 🔐 Security Features (NEW!)
 
-### 4. **Configuration Improvements**
-- **Helius RPC**: Using premium RPC for better performance
-- **Optimized Slippage**: Increased default slippage for better success rates
-- **Flexible Amounts**: Configurable buy amounts and retry settings
+### 🛡️ **Comprehensive Anti-Drainer Protection**
+- **Address Blacklist System**: Real-time protection against known drainer addresses
+- **Transaction Anomaly Detection**: AI-powered pattern analysis to detect suspicious transactions
+- **Balance Validation**: Checks issuer balance before trades (blocks zero-balance scams)
+- **User Confirmation System**: Manual approval required for high-risk actions
+- **Circuit Breaker**: Automatic trading halt on suspicious activity or excessive losses
+
+### 🔐 **Wallet Security**
+- **Encrypted Wallet Storage**: Password-protected private key encryption
+- **Secure Password Prompts**: Hidden password input for maximum security
+- **High-Value Wallet Warnings**: Alerts when using wallets with significant funds
+- **Dedicated Trading Wallet Support**: Encourages use of limited-fund wallets
+
+### 🌐 **RPC Endpoint Validation**  
+- **Official Endpoint Verification**: Validates RPC endpoints against official Solana sources
+- **Malicious Endpoint Detection**: Blocks known malicious or suspicious RPC providers
+- **Security Scoring**: Rates RPC endpoints based on trust and security factors
+- **Phishing Prevention**: Warns against fake or redirected endpoints
+
+### 📋 **Dependency Security**
+- **Automated Security Audits**: Built-in dependency vulnerability scanning
+- **Version Locking**: Package-lock.json enforcement for reproducible builds
+- **Regular Update Checks**: Automated checks for outdated packages
+- **Vulnerability Reporting**: Detailed security reports with fix recommendations
+
+### 🚨 **Monitoring & Alerts**
+- **Real-time Notifications**: Instant alerts for security events
+- **Circuit Breaker Notifications**: User alerts when trading is halted
+- **Blacklist Hit Reporting**: Notifications when blocked addresses are encountered
+- **Anomaly Detection Alerts**: Warnings for suspicious transaction patterns
+
+## 🚀 Platform Support
+
+### **Multi-Platform Token Detection**
+- **Pump.fun Integration**: Real-time monitoring via WebSocket connections
+- **Raydium Integration**: Pool creation detection and automated sniping  
+- **LetsBonk SDK**: Enhanced with security validations
+- **Meteora Support**: Additional DEX platform coverage
 
 ## 📋 Prerequisites
 

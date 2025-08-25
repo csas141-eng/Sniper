@@ -1,0 +1,342 @@
+{
+  "timestamp": "2025-08-25T18:44:44.586Z",
+  "status": "failed",
+  "vulnerabilities": {
+    "@raydium-io/raydium-sdk": {
+      "name": "@raydium-io/raydium-sdk",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@solana/spl-token"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/@raydium-io/raydium-sdk"
+      ],
+      "fixAvailable": false
+    },
+    "@solana/buffer-layout-utils": {
+      "name": "@solana/buffer-layout-utils",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "bigint-buffer"
+      ],
+      "effects": [
+        "@solana/spl-token"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@solana/buffer-layout-utils"
+      ],
+      "fixAvailable": false
+    },
+    "@solana/spl-token": {
+      "name": "@solana/spl-token",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@solana/buffer-layout-utils"
+      ],
+      "effects": [
+        "@raydium-io/raydium-sdk",
+        "letsbonkdotfun-sdk"
+      ],
+      "range": ">=0.2.0-alpha.0",
+      "nodes": [
+        "node_modules/@raydium-io/raydium-sdk/node_modules/@solana/spl-token",
+        "node_modules/@solana/spl-token"
+      ],
+      "fixAvailable": false
+    },
+    "bigint-buffer": {
+      "name": "bigint-buffer",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1103747,
+          "name": "bigint-buffer",
+          "dependency": "bigint-buffer",
+          "title": "bigint-buffer Vulnerable to Buffer Overflow via toBigIntLE() Function",
+          "url": "https://github.com/advisories/GHSA-3gc7-fjrx-p6mg",
+          "severity": "high",
+          "cwe": [
+            "CWE-120"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=1.1.5"
+        }
+      ],
+      "effects": [
+        "@solana/buffer-layout-utils"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/bigint-buffer"
+      ],
+      "fixAvailable": false
+    },
+    "form-data": {
+      "name": "form-data",
+      "severity": "critical",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1106509,
+          "name": "form-data",
+          "dependency": "form-data",
+          "title": "form-data uses unsafe random function in form-data for choosing boundary",
+          "url": "https://github.com/advisories/GHSA-fjxv-7rqg-78g4",
+          "severity": "critical",
+          "cwe": [
+            "CWE-330"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<2.5.4"
+        }
+      ],
+      "effects": [
+        "request"
+      ],
+      "range": "<2.5.4",
+      "nodes": [
+        "node_modules/request/node_modules/form-data"
+      ],
+      "fixAvailable": {
+        "name": "node-telegram-bot-api",
+        "version": "0.66.0",
+        "isSemVerMajor": true
+      }
+    },
+    "letsbonkdotfun-sdk": {
+      "name": "letsbonkdotfun-sdk",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@solana/spl-token"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/letsbonkdotfun-sdk"
+      ],
+      "fixAvailable": false
+    },
+    "node-telegram-bot-api": {
+      "name": "node-telegram-bot-api",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "request",
+        "request-promise"
+      ],
+      "effects": [],
+      "range": "<=0.63.0",
+      "nodes": [
+        "node_modules/node-telegram-bot-api"
+      ],
+      "fixAvailable": {
+        "name": "node-telegram-bot-api",
+        "version": "0.66.0",
+        "isSemVerMajor": true
+      }
+    },
+    "request": {
+      "name": "request",
+      "severity": "critical",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1096727,
+          "name": "request",
+          "dependency": "request",
+          "title": "Server-Side Request Forgery in Request",
+          "url": "https://github.com/advisories/GHSA-p8p7-x288-28g6",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-918"
+          ],
+          "cvss": {
+            "score": 6.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+          },
+          "range": "<=2.88.2"
+        },
+        "form-data",
+        "tough-cookie"
+      ],
+      "effects": [
+        "node-telegram-bot-api",
+        "request-promise",
+        "request-promise-core"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/request"
+      ],
+      "fixAvailable": {
+        "name": "node-telegram-bot-api",
+        "version": "0.66.0",
+        "isSemVerMajor": true
+      }
+    },
+    "request-promise": {
+      "name": "request-promise",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "request",
+        "request-promise-core",
+        "tough-cookie"
+      ],
+      "effects": [
+        "node-telegram-bot-api"
+      ],
+      "range": ">=0.0.2",
+      "nodes": [
+        "node_modules/request-promise"
+      ],
+      "fixAvailable": {
+        "name": "node-telegram-bot-api",
+        "version": "0.66.0",
+        "isSemVerMajor": true
+      }
+    },
+    "request-promise-core": {
+      "name": "request-promise-core",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "request"
+      ],
+      "effects": [
+        "request-promise"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/request-promise-core"
+      ],
+      "fixAvailable": {
+        "name": "node-telegram-bot-api",
+        "version": "0.66.0",
+        "isSemVerMajor": true
+      }
+    },
+    "tough-cookie": {
+      "name": "tough-cookie",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1097682,
+          "name": "tough-cookie",
+          "dependency": "tough-cookie",
+          "title": "tough-cookie Prototype Pollution vulnerability",
+          "url": "https://github.com/advisories/GHSA-72xf-g2v4-qvf3",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N"
+          },
+          "range": "<4.1.3"
+        }
+      ],
+      "effects": [
+        "request",
+        "request-promise"
+      ],
+      "range": "<4.1.3",
+      "nodes": [
+        "node_modules/tough-cookie"
+      ],
+      "fixAvailable": {
+        "name": "node-telegram-bot-api",
+        "version": "0.66.0",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "outdatedPackages": [
+    {
+      "name": "@types/node",
+      "current": "20.19.11",
+      "wanted": "20.19.11",
+      "latest": "24.3.0",
+      "location": "/home/runner/work/Sniper/Sniper/node_modules/@types/node"
+    },
+    {
+      "name": "@types/nodemailer",
+      "current": "6.4.19",
+      "wanted": "6.4.19",
+      "latest": "7.0.1",
+      "location": "/home/runner/work/Sniper/Sniper/node_modules/@types/nodemailer"
+    },
+    {
+      "name": "bs58",
+      "current": "5.0.0",
+      "wanted": "5.0.0",
+      "latest": "6.0.0",
+      "location": "/home/runner/work/Sniper/Sniper/node_modules/bs58"
+    },
+    {
+      "name": "node-telegram-bot-api",
+      "current": "0.63.0",
+      "wanted": "0.63.0",
+      "latest": "0.66.0",
+      "location": "/home/runner/work/Sniper/Sniper/node_modules/node-telegram-bot-api"
+    },
+    {
+      "name": "nodemailer",
+      "current": "6.10.1",
+      "wanted": "6.10.1",
+      "latest": "7.0.5",
+      "location": "/home/runner/work/Sniper/Sniper/node_modules/nodemailer"
+    }
+  ],
+  "securityRecommendations": [
+    {
+      "priority": "critical",
+      "category": "vulnerabilities",
+      "message": "2 critical vulnerabilities found - fix immediately",
+      "action": "npm audit fix --force"
+    },
+    {
+      "priority": "high",
+      "category": "vulnerabilities",
+      "message": "5 high severity vulnerabilities found",
+      "action": "npm audit fix"
+    },
+    {
+      "priority": "low",
+      "category": "best-practices",
+      "message": "Run security audit regularly (weekly recommended)",
+      "action": "Schedule: npm run audit"
+    },
+    {
+      "priority": "low",
+      "category": "best-practices",
+      "message": "Consider using npm ci in production for exact dependency versions",
+      "action": "Use: npm ci"
+    }
+  ],
+  "lockfileStatus": "current",
+  "totalPackages": 17,
+  "auditSummary": {
+    "total": 11,
+    "critical": 2,
+    "high": 5,
+    "moderate": 4,
+    "low": 0
+  }
+}
