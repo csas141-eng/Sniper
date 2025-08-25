@@ -1,200 +1,203 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EnhancedSwapService = void 0;
 const web3_js_1 = require("@solana/web3.js");
 const spl_token_1 = require("@solana/spl-token");
-const fs_1 = __importDefault(require("fs"));
 const risk_manager_1 = require("./risk-manager");
 const notifications_1 = require("./notifications");
 const transaction_simulator_1 = require("./transaction-simulator");
+const retry_service_1 = require("./retry-service");
+const structured_logger_1 = require("./structured-logger");
+const config_manager_1 = require("./config-manager");
 // Load configuration from config.json
 const loadConfig = () => {
-    try {
-        const configData = fs_1.default.readFileSync('./config.json', 'utf8');
-        const userConfig = JSON.parse(configData);
-        return {
-            SOLANA_RPC_URL: userConfig.solanaRpcUrl,
-            walletPath: './my-wallet.json',
-            AMOUNT_TO_BUY: userConfig.buyAmountSol,
-            SLIPPAGE: userConfig.slippage,
-            MAX_RETRIES: 5,
-            RETRY_DELAY: 1000,
-            MIN_LIQUIDITY: 0.001,
-            PRIORITY_FEE: 50000,
-            WEBSOCKET_RECONNECT_DELAY: 5000,
-            MAX_CONCURRENT_SNIPES: 3,
-            GAS_LIMIT_MULTIPLIER: 1.2,
-            TOKEN_VALIDATION: {
-                MIN_LIQUIDITY_USD: 10000,
-                MIN_HOLDERS: 7,
-                REQUIRE_NO_MINT: true,
-                REQUIRE_NO_BLACKLIST: true,
-                ENABLE_DEVELOPER_FILTERING: true
-            },
-            SWAP_METHODS: {
-                ENABLE_PUMPFUN: true,
-                ENABLE_JUPITER: true,
-                ENABLE_RAYDIUM: true,
-                ENABLE_METEORA: true,
-                SOLANA: 'solana',
-                JITO: 'jito',
-                NOZOMI: 'nozomi',
-                ZERO_SLOT: '0slot',
-                RACE: 'race'
-            },
-            PROFIT_TAKING: {
-                ENABLE_AUTO_PROFIT: true,
-                PROFIT_PERCENTAGE: 50,
-                STOP_LOSS_PERCENTAGE: 20,
-                TRAILING_STOP: true
-            },
-            PERFORMANCE: {
-                maxRetries: 5
-            },
-            PRIORITY_FEES: {
-                HIGH: 50000,
-                ULTRA: 100000,
-                JITO_TIP: 75000,
-                NOZOMI_TIP: 60000
-            },
-            JITO: {
-                RPC_URL: 'https://jito-api.mainnet.jito.network',
-                TIP_ACCOUNT: 'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn'
-            },
-            NOZOMI: {
-                RPC_URL: 'https://rpc.nozomi.com',
-                TIP_ACCOUNT: 'TEMPaMeCRFAS9EKF53Jd6KpHxgL47uWLcpFArU1Fanq'
-            }
-        };
-    }
-    catch (error) {
-        console.error('Error loading config.json, using defaults:', error);
-        // Fallback to default config
-        return {
-            SOLANA_RPC_URL: 'https://api.mainnet-beta.solana.com',
-            walletPath: './my-wallet.json',
-            AMOUNT_TO_BUY: 0.01,
-            SLIPPAGE: 30,
-            MAX_RETRIES: 5,
-            RETRY_DELAY: 1000,
-            MIN_LIQUIDITY: 0.001,
-            PRIORITY_FEE: 50000,
-            WEBSOCKET_RECONNECT_DELAY: 5000,
-            MAX_CONCURRENT_SNIPES: 3,
-            GAS_LIMIT_MULTIPLIER: 1.2,
-            TOKEN_VALIDATION: {
-                MIN_LIQUIDITY_USD: 10000,
-                MIN_HOLDERS: 7,
-                REQUIRE_NO_MINT: true,
-                REQUIRE_NO_BLACKLIST: true,
-                ENABLE_DEVELOPER_FILTERING: true
-            },
-            SWAP_METHODS: {
-                ENABLE_PUMPFUN: true,
-                ENABLE_JUPITER: true,
-                ENABLE_RAYDIUM: true,
-                ENABLE_METEORA: true,
-                SOLANA: 'solana',
-                JITO: 'jito',
-                NOZOMI: 'nozomi',
-                ZERO_SLOT: '0slot',
-                RACE: 'race'
-            },
-            PROFIT_TAKING: {
-                ENABLE_AUTO_PROFIT: true,
-                PROFIT_PERCENTAGE: 50,
-                STOP_LOSS_PERCENTAGE: 20,
-                TRAILING_STOP: true
-            },
-            PERFORMANCE: {
-                maxRetries: 5
-            },
-            PRIORITY_FEES: {
-                HIGH: 50000,
-                ULTRA: 100000,
-                JITO_TIP: 75000,
-                NOZOMI_TIP: 60000
-            },
-            JITO: {
-                RPC_URL: 'https://jito-api.mainnet.jito.network',
-                TIP_ACCOUNT: 'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn'
-            },
-            NOZOMI: {
-                RPC_URL: 'https://rpc.nozomi.com',
-                TIP_ACCOUNT: 'TEMPaMeCRFAS9EKF53Jd6KpHxgL47uWLcpFArU1Fanq'
-            }
-        };
-    }
+    const config = config_manager_1.configManager.getConfig();
+    return {
+        SOLANA_RPC_URL: config.solanaRpcUrl,
+        walletPath: './my-wallet.json',
+        AMOUNT_TO_BUY: config.buyAmountSol,
+        SLIPPAGE: config.slippage,
+        MAX_RETRIES: config.retrySettings?.maxRetries || 5,
+        RETRY_DELAY: config.retrySettings?.baseDelay || 1000,
+        MIN_LIQUIDITY: config.tokenValidation?.minLiquidity || 0.001,
+        PRIORITY_FEE: config.priorityFees?.baseFee || 50000,
+        WEBSOCKET_RECONNECT_DELAY: 5000,
+        MAX_CONCURRENT_SNIPES: config.performance?.maxConcurrentSwaps || 3,
+        GAS_LIMIT_MULTIPLIER: 1.2,
+        TOKEN_VALIDATION: {
+            MIN_LIQUIDITY_USD: config.tokenValidation?.minLiquidity || 10000,
+            MIN_HOLDERS: config.tokenValidation?.minHolders || 7,
+            REQUIRE_NO_MINT: true,
+            REQUIRE_NO_BLACKLIST: true,
+            ENABLE_DEVELOPER_FILTERING: true
+        },
+        SWAP_METHODS: {
+            ENABLE_PUMPFUN: config.swapMethods?.pumpFun !== false,
+            ENABLE_JUPITER: config.swapMethods?.jupiter !== false,
+            ENABLE_RAYDIUM: config.swapMethods?.raydium !== false,
+            ENABLE_METEORA: config.swapMethods?.meteora === true,
+            SOLANA: 'solana',
+            JITO: 'jito',
+            NOZOMI: 'nozomi',
+            ZERO_SLOT: '0slot',
+            RACE: 'race'
+        },
+        PROFIT_TAKING: {
+            TARGET_PROFIT: config.profitTaking?.targetProfit || 0.3,
+            STOP_LOSS: config.profitTaking?.stopLoss || 0.15,
+            TIER_1: { percentage: 10.0, amount: 0.35 },
+            TIER_2: { percentage: 100.0, amount: 0.35 },
+            KEEP_AMOUNT: 0.30,
+            ENABLE_AUTO_SELL: config.profitTaking?.enabled !== false,
+            MIN_PROFIT_TO_SELL: 0.5,
+            MAX_HOLD_TIME: 24 * 60 * 60 * 1000
+        },
+        JITO: {
+            RPC_URL: 'https://mainnet.block-engine.jito.wtf/api/v1/transactions',
+            TIP_ACCOUNT: 'Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY',
+            TIP_AMOUNT: config.jito?.tipAmount || 200000,
+            MAX_RETRIES: 3,
+            TIMEOUT: 30000
+        },
+        NOZOMI: {
+            RPC_URL: 'https://rpc.nozomi.com',
+            TIP_ACCOUNT: 'TEMPaMeCRFAS9EKF53Jd6KpHxgL47uWLcpFArU1Fanq'
+        }
+    };
 };
-// Rate limiting for public Solana API
-class RateLimiter {
-    requestCounts = new Map();
-    windowMs = 10000; // 10 seconds
-    maxRequestsPerWindow = 100;
-    maxRequestsPerMethod = 40;
-    async waitForRateLimit(method = 'general') {
-        const now = Date.now();
-        const windowStart = now - this.windowMs;
-        // Clean old timestamps
-        if (!this.requestCounts.has(method)) {
-            this.requestCounts.set(method, []);
-        }
-        if (!this.requestCounts.has('general')) {
-            this.requestCounts.set('general', []);
-        }
-        const methodRequests = this.requestCounts.get(method);
-        const generalRequests = this.requestCounts.get('general');
-        // Remove old timestamps
-        const filteredMethodRequests = methodRequests.filter(time => time > windowStart);
-        const filteredGeneralRequests = generalRequests.filter(time => time > windowStart);
-        // Check if we're at the limit
-        if (filteredMethodRequests.length >= this.maxRequestsPerMethod) {
-            const oldestRequest = Math.min(...filteredMethodRequests);
-            const waitTime = this.windowMs - (now - oldestRequest) + 100;
-            console.log(`⏳ Rate limit reached for ${method}, waiting ${Math.round(waitTime)}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-        if (filteredGeneralRequests.length >= this.maxRequestsPerWindow) {
-            const oldestRequest = Math.min(...filteredGeneralRequests);
-            const waitTime = this.windowMs - (now - oldestRequest) + 100;
-            console.log(`⏳ General rate limit reached, waiting ${Math.round(waitTime)}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-        // Add current request
-        filteredMethodRequests.push(now);
-        filteredGeneralRequests.push(now);
-        this.requestCounts.set(method, filteredMethodRequests);
-        this.requestCounts.set('general', filteredGeneralRequests);
-    }
+MIN_LIQUIDITY: 0.001,
+    PRIORITY_FEE;
+50000,
+    WEBSOCKET_RECONNECT_DELAY;
+5000,
+    MAX_CONCURRENT_SNIPES;
+3,
+    GAS_LIMIT_MULTIPLIER;
+1.2,
+    TOKEN_VALIDATION;
+{
+    MIN_LIQUIDITY_USD: 10000,
+        MIN_HOLDERS;
+    7,
+        REQUIRE_NO_MINT;
+    true,
+        REQUIRE_NO_BLACKLIST;
+    true,
+        ENABLE_DEVELOPER_FILTERING;
+    true;
 }
-const rateLimiter = new RateLimiter();
-// Enhanced retry logic with rate limiting
-async function executeWithRetry(operation, method = 'general', maxRetries = 2, // Reduced for public API
-baseDelay = 2000 // Increased delay
-) {
-    let lastError;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            // Wait for rate limit before each attempt
-            await rateLimiter.waitForRateLimit(method);
-            return await operation();
-        }
-        catch (error) {
-            lastError = error;
-            if (attempt === maxRetries) {
-                throw lastError;
-            }
-            // Exponential backoff with jitter
-            const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 2000;
-            console.log(`⚠️ Attempt ${attempt} failed, retrying in ${Math.round(delay)}ms...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-    }
-    throw lastError;
+SWAP_METHODS: {
+    ENABLE_PUMPFUN: true,
+        ENABLE_JUPITER;
+    true,
+        ENABLE_RAYDIUM;
+    true,
+        ENABLE_METEORA;
+    true,
+        SOLANA;
+    'solana',
+        JITO;
+    'jito',
+        NOZOMI;
+    'nozomi',
+        ZERO_SLOT;
+    '0slot',
+        RACE;
+    'race';
 }
+PROFIT_TAKING: {
+    ENABLE_AUTO_PROFIT: true,
+        PROFIT_PERCENTAGE;
+    50,
+        STOP_LOSS_PERCENTAGE;
+    20,
+        TRAILING_STOP;
+    true;
+}
+PERFORMANCE: {
+    maxRetries: 5;
+}
+PRIORITY_FEES: {
+    HIGH: 50000,
+        ULTRA;
+    100000,
+        JITO_TIP;
+    75000,
+        NOZOMI_TIP;
+    60000;
+}
+JITO: {
+    RPC_URL: 'https://jito-api.mainnet.jito.network',
+        TIP_ACCOUNT;
+    'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn';
+}
+NOZOMI: {
+    RPC_URL: 'https://rpc.nozomi.com',
+        TIP_ACCOUNT;
+    'TEMPaMeCRFAS9EKF53Jd6KpHxgL47uWLcpFArU1Fanq';
+}
+;
+try { }
+catch (error) {
+    console.error('Error loading config.json, using defaults:', error);
+    // Fallback to default config
+    return {
+        SOLANA_RPC_URL: 'https://api.mainnet-beta.solana.com',
+        walletPath: './my-wallet.json',
+        AMOUNT_TO_BUY: 0.01,
+        SLIPPAGE: 30,
+        MAX_RETRIES: 5,
+        RETRY_DELAY: 1000,
+        MIN_LIQUIDITY: 0.001,
+        PRIORITY_FEE: 50000,
+        WEBSOCKET_RECONNECT_DELAY: 5000,
+        MAX_CONCURRENT_SNIPES: 3,
+        GAS_LIMIT_MULTIPLIER: 1.2,
+        TOKEN_VALIDATION: {
+            MIN_LIQUIDITY_USD: 10000,
+            MIN_HOLDERS: 7,
+            REQUIRE_NO_MINT: true,
+            REQUIRE_NO_BLACKLIST: true,
+            ENABLE_DEVELOPER_FILTERING: true
+        },
+        SWAP_METHODS: {
+            ENABLE_PUMPFUN: true,
+            ENABLE_JUPITER: true,
+            ENABLE_RAYDIUM: true,
+            ENABLE_METEORA: true,
+            SOLANA: 'solana',
+            JITO: 'jito',
+            NOZOMI: 'nozomi',
+            ZERO_SLOT: '0slot',
+            RACE: 'race'
+        },
+        PROFIT_TAKING: {
+            ENABLE_AUTO_PROFIT: true,
+            PROFIT_PERCENTAGE: 50,
+            STOP_LOSS_PERCENTAGE: 20,
+            TRAILING_STOP: true
+        },
+        PERFORMANCE: {
+            maxRetries: 5
+        },
+        PRIORITY_FEES: {
+            HIGH: 50000,
+            ULTRA: 100000,
+            JITO_TIP: 75000,
+            NOZOMI_TIP: 60000
+        },
+        JITO: {
+            RPC_URL: 'https://jito-api.mainnet.jito.network',
+            TIP_ACCOUNT: 'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn'
+        },
+        NOZOMI: {
+            RPC_URL: 'https://rpc.nozomi.com',
+            TIP_ACCOUNT: 'TEMPaMeCRFAS9EKF53Jd6KpHxgL47uWLcpFArU1Fanq'
+        }
+    };
+}
+;
+// Remove the old executeWithRetry function - we'll use the centralized one
 class EnhancedSwapService {
     connection;
     jitoConnection;
@@ -315,14 +318,19 @@ class EnhancedSwapService {
             console.log(`✅ Transaction validated and simulated successfully`);
             // Sign transaction first
             transaction.sign(request.wallet);
-            // Send signed transaction with rate limiting
-            const signature = await executeWithRetry(async () => {
+            // Send signed transaction with centralized retry logic
+            const signature = await retry_service_1.retryService.executeWithRetry(async () => {
                 return await this.connection.sendTransaction(transaction, [], {
                     skipPreflight: false,
                     maxRetries: 2,
                     preflightCommitment: 'confirmed'
                 });
-            }, 'send_transaction');
+            }, {
+                apiName: 'solana',
+                endpoint: 'sendTransaction',
+                operation: 'standard-swap'
+            });
+            structured_logger_1.logger.logApiSuccess('solana', 'sendTransaction', 'standard-swap');
             console.log(`📡 Transaction sent: ${signature}`);
             // Wait for confirmation with timeout
             const confirmation = await this.connection.confirmTransaction({
@@ -374,14 +382,19 @@ class EnhancedSwapService {
             // Sign the transaction before sending
             transaction.sign(request.wallet);
             console.log(`📡 Sending Raydium swap transaction...`);
-            // Send transaction with retries and rate limiting
-            const signature = await executeWithRetry(async () => {
+            // Send transaction with centralized retries and rate limiting
+            const signature = await retry_service_1.retryService.executeWithRetry(async () => {
                 return await this.connection.sendTransaction(transaction, [], {
                     skipPreflight: false,
                     maxRetries: 2,
                     preflightCommitment: 'confirmed'
                 });
-            }, 'send_transaction');
+            }, {
+                apiName: 'raydium',
+                endpoint: 'sendTransaction',
+                operation: 'fallback-swap'
+            });
+            structured_logger_1.logger.logApiSuccess('raydium', 'sendTransaction', 'fallback-swap');
             console.log(`📡 Raydium transaction sent: ${signature}`);
             // Wait for confirmation
             const confirmation = await this.connection.confirmTransaction({
@@ -426,7 +439,7 @@ class EnhancedSwapService {
                 pool: 'pump'
             };
             console.log(`📡 Pump.fun bonding curve request:`, swapRequest);
-            const response = await executeWithRetry(async () => {
+            const response = await retry_service_1.retryService.executeWithRetry(async () => {
                 return await fetch(pumpFunUrl, {
                     method: 'POST',
                     headers: {
@@ -435,7 +448,11 @@ class EnhancedSwapService {
                     },
                     body: JSON.stringify(swapRequest)
                 });
-            }, 'pumpfun_api');
+            }, {
+                apiName: 'pumpfun',
+                endpoint: '/api/trade-local',
+                operation: 'direct-swap'
+            });
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Pump.fun bonding curve API error: ${response.status} - ${errorText}`);
@@ -462,14 +479,19 @@ class EnhancedSwapService {
             });
             // Sign the transaction before sending
             transaction.sign(request.wallet);
-            // Execute the transaction using the connection with rate limiting
-            const signature = await executeWithRetry(async () => {
+            // Execute the transaction using the connection with centralized retry logic
+            const signature = await retry_service_1.retryService.executeWithRetry(async () => {
                 return await this.connection.sendTransaction(transaction, [], {
                     skipPreflight: false,
                     maxRetries: 2,
                     preflightCommitment: 'confirmed'
                 });
-            }, 'send_transaction');
+            }, {
+                apiName: 'pumpfun',
+                endpoint: 'sendTransaction',
+                operation: 'bonding-curve-swap'
+            });
+            structured_logger_1.logger.logApiSuccess('pumpfun', 'sendTransaction', 'bonding-curve-swap');
             console.log(`✅ Pump.fun bonding curve swap executed: ${signature}`);
             return {
                 success: true,

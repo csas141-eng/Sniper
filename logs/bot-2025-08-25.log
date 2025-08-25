@@ -1,0 +1,16 @@
+{"level":"INFO","message":"Testing info message","timestamp":"2025-08-25T13:44:34.749Z","context":{"testContext":true}}
+{"level":"WARN","message":"Testing warning message","timestamp":"2025-08-25T13:44:34.749Z","context":{"testContext":true}}
+{"level":"ERROR","message":"Testing error message","timestamp":"2025-08-25T13:44:34.750Z","context":{"testContext":true}}
+{"level":"INFO","message":"pumpfun /api/tokens getTokenInfo succeeded","timestamp":"2025-08-25T13:44:34.750Z","context":{"apiName":"pumpfun","endpoint":"/api/tokens","operation":"getTokenInfo","responseTimeMs":150}}
+{"level":"ERROR","message":"raydium /api/pools getPoolInfo failed","timestamp":"2025-08-25T13:44:34.750Z","context":{"apiName":"raydium","endpoint":"/api/pools","operation":"getPoolInfo","error":"Test error","statusCode":500}}
+{"level":"WARN","message":"jupiter /api/swap swap attempt 2/3 failed","timestamp":"2025-08-25T13:44:34.750Z","context":{"apiName":"jupiter","endpoint":"/api/swap","operation":"swap","attempt":2,"totalAttempts":3,"error":"Rate limited","nextRetryIn":"2000ms"}}
+{"level":"INFO","message":"BUY ABC123... amount=0.01 SUCCESS","timestamp":"2025-08-25T13:44:34.750Z","context":{"type":"buy","tokenMint":"ABC123...","amount":0.01,"txHash":"tx123..."}}
+{"level":"ERROR","message":"Circuit breaker OPENED: Too many failures","timestamp":"2025-08-25T13:44:34.750Z","context":{"circuitBreaker":"opened","reason":"Too many failures"}}
+{"level":"INFO","message":"Testing info message","timestamp":"2025-08-25T13:48:15.969Z","context":{"testContext":true}}
+{"level":"WARN","message":"Testing warning message","timestamp":"2025-08-25T13:48:15.969Z","context":{"testContext":true}}
+{"level":"ERROR","message":"Testing error message","timestamp":"2025-08-25T13:48:15.969Z","context":{"testContext":true}}
+{"level":"INFO","message":"pumpfun /api/tokens getTokenInfo succeeded","timestamp":"2025-08-25T13:48:15.970Z","context":{"apiName":"pumpfun","endpoint":"/api/tokens","operation":"getTokenInfo","responseTimeMs":150}}
+{"level":"ERROR","message":"raydium /api/pools getPoolInfo failed","timestamp":"2025-08-25T13:48:15.970Z","context":{"apiName":"raydium","endpoint":"/api/pools","operation":"getPoolInfo","error":"Test error","statusCode":500}}
+{"level":"WARN","message":"jupiter /api/swap swap attempt 2/3 failed","timestamp":"2025-08-25T13:48:15.970Z","context":{"apiName":"jupiter","endpoint":"/api/swap","operation":"swap","attempt":2,"totalAttempts":3,"error":"Rate limited","nextRetryIn":"2000ms"}}
+{"level":"INFO","message":"BUY ABC123... amount=0.01 SUCCESS","timestamp":"2025-08-25T13:48:15.970Z","context":{"type":"buy","tokenMint":"ABC123...","amount":0.01,"txHash":"tx123..."}}
+{"level":"ERROR","message":"Circuit breaker OPENED: Too many failures","timestamp":"2025-08-25T13:48:15.971Z","context":{"circuitBreaker":"opened","reason":"Too many failures"}}
