@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": 1756130887759,
+  "timestamp": 1756145510563,
   "activeSnipes": [
     {
       "tokenMint": "SNIPE2...",
@@ -16,30 +16,36 @@
       "amount": 0.05,
       "platform": "pumpfun",
       "status": "pending"
+    },
+    {
+      "tokenMint": "SNIPE2...",
+      "startTime": 1756144505407,
+      "amount": 0.02,
+      "platform": "raydium",
+      "status": "executing"
+    },
+    {
+      "tokenMint": "SNIPE2...",
+      "startTime": 1756145390565,
+      "amount": 0.02,
+      "platform": "raydium",
+      "status": "executing"
     }
   ],
   "errorCounters": {
-    "totalErrors": 2,
+    "totalErrors": 6,
     "errorsByType": {
-      "NETWORK_ERROR": 1,
-      "API_ERROR": 1
+      "NETWORK_ERROR": 3,
+      "API_ERROR": 3
     },
     "errorsByApi": {
-      "solana": 1,
-      "pumpfun": 1
+      "solana": 3,
+      "pumpfun": 3
     },
-    "lastErrorTime": 1756130508208,
+    "lastErrorTime": 1756145390566,
     "consecutiveErrors": 0
   },
   "poolsCache": [
-    {
-      "mint": "POOL1...",
-      "poolAddress": "POOLADDR1...",
-      "liquidity": 10000,
-      "platform": "raydium",
-      "discoveredAt": 1756130508209,
-      "lastUpdated": 1756130508209
-    },
     {
       "mint": "POOL123...",
       "poolAddress": "POOLADDR123...",
@@ -47,25 +53,33 @@
       "platform": "raydium",
       "discoveredAt": 1756130830068,
       "lastUpdated": 1756130830068
+    },
+    {
+      "mint": "POOL1...",
+      "poolAddress": "POOLADDR1...",
+      "liquidity": 10000,
+      "platform": "raydium",
+      "discoveredAt": 1756145390566,
+      "lastUpdated": 1756145390566
     }
   ],
   "profitStats": {
-    "totalTrades": 4,
-    "successfulTrades": 2,
-    "totalProfit": 0.07500000000000001,
-    "totalLoss": 0.02,
+    "totalTrades": 8,
+    "successfulTrades": 4,
+    "totalProfit": 0.175,
+    "totalLoss": 0.04,
     "bestTrade": 0.05,
     "worstTrade": -0.01,
-    "avgTradeSize": 0.022500000000000003
+    "avgTradeSize": 0.01625
   },
   "runtimeStats": {
     "startTime": 1756130508201,
-    "uptime": 0,
-    "lastHealthCheck": 1756130827757,
+    "uptime": 14882366,
+    "lastHealthCheck": 1756145390567,
     "memoryUsage": {
-      "rss": 45924352,
+      "rss": 46440448,
       "heapTotal": 4694016,
-      "heapUsed": 4343112,
+      "heapUsed": 4462032,
       "external": 1419454,
       "arrayBuffers": 10515
     },
@@ -73,6 +87,6 @@
       "pumpfun": true,
       "raydium": false
     },
-    "configReloads": 1
+    "configReloads": 3
   }
 }

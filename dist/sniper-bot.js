@@ -50,6 +50,8 @@ const enhanced_swap_1 = require("./services/enhanced-swap");
 const token_validator_1 = require("./services/token-validator");
 const bonk_fun_integration_1 = require("./services/bonk-fun-integration");
 const profit_taker_1 = require("./services/profit-taker");
+const circuit_breaker_1 = require("./services/circuit-breaker");
+const state_persistence_1 = require("./services/state-persistence");
 // NEW: Updated endpoints for PumpPortal
 const PUMP_PORTAL_WS_URL = 'wss://pumpportal.fun/api/data';
 const PUMP_FUN_REST_URL = 'https://pumpportal.fun/api/trade-local';
@@ -208,6 +210,8 @@ class SniperBot {
     tokenValidator;
     bonkFunIntegration;
     profitTaker;
+    circuitBreaker;
+    statePersistence;
     targetDevelopers;
     isRunning = false;
     failedTransactions = new Set();
@@ -236,6 +240,8 @@ class SniperBot {
         this.tokenValidator = new token_validator_1.TokenValidator(connection);
         this.bonkFunIntegration = new bonk_fun_integration_1.BonkFunIntegration(connection);
         this.profitTaker = new profit_taker_1.ProfitTaker(connection);
+        this.circuitBreaker = circuit_breaker_1.circuitBreaker;
+        this.statePersistence = state_persistence_1.statePersistence;
         this.targetDevelopers = targetDevelopers.map(dev => {
             try {
                 return new web3_js_1.PublicKey(dev);
@@ -1642,6 +1648,41 @@ class SniperBot {
                 console.error('❌ Both Meteora WebSocket and REST fallback failed:', restError);
             }
         }
+    }
+    // Updated monitoring intervals for public API rate limits
+    // Conservative approach: 10s base interval, 20s for trades, 30s for balance
+    /**
+     * NEW: Get extended status information including circuit breaker status
+     */
+    getExtendedStatus() {
+        // Get circuit breaker status
+        const cbStatus = this.circuitBreaker.getStatus();
+        // Get monitoring status
+        const monitoringStatus = this.statePersistence.getState();
+        return {
+            isRunning: this.isRunning,
+            wallet: {
+                address: this.wallet.publicKey.toBase58(),
+                balance: undefined // Could be fetched async if needed
+            },
+            connections: {
+                rpc: this.connection.rpcEndpoint,
+                websocketConnected: true // Could be checked if websocket status is available
+            },
+            circuitBreaker: cbStatus,
+            monitoring: {
+                activeSnipes: monitoringStatus.activeSnipes.length,
+                totalTrades: monitoringStatus.profitStats.totalTrades,
+                successfulTrades: monitoringStatus.profitStats.successfulTrades
+            },
+            platforms: {
+                pumpfun: true,
+                raydium: true,
+                bonkfun: true,
+                meteora: true
+            },
+            lastUpdate: new Date().toISOString()
+        };
     }
 }
 exports.SniperBot = SniperBot;

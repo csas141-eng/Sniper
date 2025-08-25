@@ -14,6 +14,8 @@ import { transactionParser } from './services/transaction-parser';
 import { TokenValidator } from './services/token-validator';
 import { BonkFunIntegration } from './services/bonk-fun-integration';
 import { ProfitTaker, Position } from './services/profit-taker';
+import { circuitBreaker } from './services/circuit-breaker';
+import { statePersistence } from './services/state-persistence';
 
 // NEW: Updated endpoints for PumpPortal
 const PUMP_PORTAL_WS_URL = 'wss://pumpportal.fun/api/data';
@@ -193,6 +195,8 @@ export class SniperBot {
   private tokenValidator: TokenValidator;
   private bonkFunIntegration: BonkFunIntegration;
   private profitTaker: ProfitTaker;
+  private circuitBreaker: typeof circuitBreaker;
+  private statePersistence: typeof statePersistence;
   private targetDevelopers: PublicKey[];
   private isRunning: boolean = false;
   private failedTransactions: Set<string> = new Set();
@@ -235,6 +239,8 @@ export class SniperBot {
     this.tokenValidator = new TokenValidator(connection);
     this.bonkFunIntegration = new BonkFunIntegration(connection);
     this.profitTaker = new ProfitTaker(connection);
+    this.circuitBreaker = circuitBreaker;
+    this.statePersistence = statePersistence;
     
     this.targetDevelopers = targetDevelopers.map(dev => {
       try {
@@ -1781,4 +1787,76 @@ export class SniperBot {
 
   // Updated monitoring intervals for public API rate limits
   // Conservative approach: 10s base interval, 20s for trades, 30s for balance
+
+  /**
+   * NEW: Get extended status information including circuit breaker status
+   */
+  getExtendedStatus(): {
+    isRunning: boolean;
+    wallet: {
+      address: string;
+      balance?: number;
+    };
+    connections: {
+      rpc: string;
+      websocketConnected: boolean;
+    };
+    circuitBreaker: {
+      enabled: boolean;
+      isOpen: boolean;
+      isHalfOpen: boolean;
+      dailyLoss: number;
+      dailyTrades: number;
+      consecutiveFailures: number;
+      nextAttemptTime?: number;
+      thresholds: {
+        dailyLossThreshold?: number;
+        singleLossThreshold?: number;
+        errorThreshold?: number;
+      };
+    };
+    monitoring: {
+      activeSnipes: number;
+      totalTrades: number;
+      successfulTrades: number;
+    };
+    platforms: {
+      pumpfun: boolean;
+      raydium: boolean;
+      bonkfun: boolean;
+      meteora: boolean;
+    };
+    lastUpdate: string;
+  } {
+    // Get circuit breaker status
+    const cbStatus = this.circuitBreaker.getStatus();
+    
+    // Get monitoring status
+    const monitoringStatus = this.statePersistence.getState();
+    
+    return {
+      isRunning: this.isRunning,
+      wallet: {
+        address: this.wallet.publicKey.toBase58(),
+        balance: undefined // Could be fetched async if needed
+      },
+      connections: {
+        rpc: this.connection.rpcEndpoint,
+        websocketConnected: true // Could be checked if websocket status is available
+      },
+      circuitBreaker: cbStatus,
+      monitoring: {
+        activeSnipes: monitoringStatus.activeSnipes.length,
+        totalTrades: monitoringStatus.profitStats.totalTrades,
+        successfulTrades: monitoringStatus.profitStats.successfulTrades
+      },
+      platforms: {
+        pumpfun: true,
+        raydium: true, 
+        bonkfun: true,
+        meteora: true
+      },
+      lastUpdate: new Date().toISOString()
+    };
+  }
 }

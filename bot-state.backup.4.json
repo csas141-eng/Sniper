@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": 1756130830075,
+  "timestamp": 1756145495422,
   "activeSnipes": [
     {
       "tokenMint": "SNIPE2...",
@@ -16,30 +16,29 @@
       "amount": 0.05,
       "platform": "pumpfun",
       "status": "pending"
+    },
+    {
+      "tokenMint": "SNIPE2...",
+      "startTime": 1756144505407,
+      "amount": 0.02,
+      "platform": "raydium",
+      "status": "executing"
     }
   ],
   "errorCounters": {
-    "totalErrors": 2,
+    "totalErrors": 4,
     "errorsByType": {
-      "NETWORK_ERROR": 1,
-      "API_ERROR": 1
+      "NETWORK_ERROR": 2,
+      "API_ERROR": 2
     },
     "errorsByApi": {
-      "solana": 1,
-      "pumpfun": 1
+      "solana": 2,
+      "pumpfun": 2
     },
-    "lastErrorTime": 1756130508208,
+    "lastErrorTime": 1756144505408,
     "consecutiveErrors": 0
   },
   "poolsCache": [
-    {
-      "mint": "POOL1...",
-      "poolAddress": "POOLADDR1...",
-      "liquidity": 10000,
-      "platform": "raydium",
-      "discoveredAt": 1756130508209,
-      "lastUpdated": 1756130508209
-    },
     {
       "mint": "POOL123...",
       "poolAddress": "POOLADDR123...",
@@ -47,25 +46,33 @@
       "platform": "raydium",
       "discoveredAt": 1756130830068,
       "lastUpdated": 1756130830068
+    },
+    {
+      "mint": "POOL1...",
+      "poolAddress": "POOLADDR1...",
+      "liquidity": 10000,
+      "platform": "raydium",
+      "discoveredAt": 1756144505408,
+      "lastUpdated": 1756144505408
     }
   ],
   "profitStats": {
-    "totalTrades": 4,
-    "successfulTrades": 2,
-    "totalProfit": 0.07500000000000001,
-    "totalLoss": 0.02,
+    "totalTrades": 6,
+    "successfulTrades": 3,
+    "totalProfit": 0.125,
+    "totalLoss": 0.03,
     "bestTrade": 0.05,
     "worstTrade": -0.01,
-    "avgTradeSize": 0.022500000000000003
+    "avgTradeSize": 0.018333333333333333
   },
   "runtimeStats": {
     "startTime": 1756130508201,
-    "uptime": 0,
-    "lastHealthCheck": 1756130827757,
+    "uptime": 13997207,
+    "lastHealthCheck": 1756144505408,
     "memoryUsage": {
-      "rss": 45924352,
+      "rss": 46448640,
       "heapTotal": 4694016,
-      "heapUsed": 4343112,
+      "heapUsed": 4457176,
       "external": 1419454,
       "arrayBuffers": 10515
     },
@@ -73,6 +80,6 @@
       "pumpfun": true,
       "raydium": false
     },
-    "configReloads": 1
+    "configReloads": 2
   }
 }

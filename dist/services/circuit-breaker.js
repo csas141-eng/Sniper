@@ -14,6 +14,7 @@ const notifications_1 = require("./notifications");
 class CircuitBreaker {
     state;
     config;
+    stateChangeCallbacks = [];
     constructor() {
         this.config = config_manager_1.configManager.getConfig().circuitBreaker || {};
         this.state = this.loadState();
@@ -24,6 +25,38 @@ class CircuitBreaker {
         });
         // Reset daily counters if needed
         this.resetDailyCountersIfNeeded();
+    }
+    /**
+     * Register a callback for state changes (e.g., Discord, Slack notifications)
+     */
+    onStateChange(callback) {
+        this.stateChangeCallbacks.push(callback);
+    }
+    /**
+     * Remove a state change callback
+     */
+    removeStateChangeCallback(callback) {
+        const index = this.stateChangeCallbacks.indexOf(callback);
+        if (index > -1) {
+            this.stateChangeCallbacks.splice(index, 1);
+        }
+    }
+    /**
+     * Execute all state change callbacks
+     */
+    async executeStateChangeCallbacks(state, reason) {
+        for (const callback of this.stateChangeCallbacks) {
+            try {
+                await callback(state, reason);
+            }
+            catch (error) {
+                structured_logger_1.logger.error('State change callback failed', {
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    state,
+                    reason
+                });
+            }
+        }
     }
     /**
      * Check if trading is allowed
@@ -48,6 +81,10 @@ class CircuitBreaker {
                 this.state.isOpen = false;
                 this.saveState();
                 structured_logger_1.logger.logCircuitBreakerEvent('half-open', 'Attempting recovery');
+                // Execute state change callbacks
+                this.executeStateChangeCallbacks('half-open', 'Attempting recovery').catch(error => {
+                    structured_logger_1.logger.error('Failed to execute state change callbacks', { error: error.message });
+                });
             }
         }
         // Check daily loss threshold
@@ -103,6 +140,10 @@ class CircuitBreaker {
             this.state.isHalfOpen = false;
             this.state.failureCount = 0;
             structured_logger_1.logger.logCircuitBreakerEvent('closed', 'Recovery successful');
+            // Execute state change callbacks
+            this.executeStateChangeCallbacks('closed', 'Recovery successful').catch(error => {
+                structured_logger_1.logger.error('Failed to execute state change callbacks', { error: error.message });
+            });
         }
         structured_logger_1.logger.info('Trade success recorded', {
             tokenMint: result.tokenMint,
@@ -173,6 +214,10 @@ class CircuitBreaker {
         this.state.isHalfOpen = false;
         this.state.nextAttemptTime = Date.now() + (this.config.recoveryTimeMs || 300000); // 5 min default
         structured_logger_1.logger.logCircuitBreakerEvent('opened', reason);
+        // Execute state change callbacks
+        this.executeStateChangeCallbacks('opened', reason).catch(error => {
+            structured_logger_1.logger.error('Failed to execute state change callbacks', { error: error.message });
+        });
         // Send notification
         try {
             await notifications_1.notificationService.sendNotification(`🔴 Circuit Breaker Opened: ${reason}`, 'error', {
