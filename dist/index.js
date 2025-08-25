@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const web3_js_1 = require("@solana/web3.js");
 const sniper_bot_1 = require("./sniper-bot");
 const letsbonk_sdk_1 = require("./letsbonk-sdk");
+const wallet_loader_1 = require("./services/wallet-loader");
 const fs_1 = __importDefault(require("fs"));
 console.log('📁 SBSniper index.ts loaded');
 async function main() {
@@ -24,18 +25,20 @@ async function main() {
     // Setup connection using user's RPC URL
     const connection = new web3_js_1.Connection(config.solanaRpcUrl, 'confirmed');
     console.log('✅ Solana connection established');
-    // Load wallet from user's private key
+    // SECURITY: Load wallet securely using wallet loader helper
     let keypair;
     try {
-        const secretKey = Uint8Array.from(config.privateKey);
-        keypair = web3_js_1.Keypair.fromSecretKey(secretKey);
-        console.log('✅ Wallet loaded successfully');
+        keypair = wallet_loader_1.WalletLoader.loadFromPrivateKey(config.privateKey);
+        // SECURITY: Validate wallet without exposing secrets
+        if (!wallet_loader_1.WalletLoader.validateWallet(keypair)) {
+            throw new Error('Invalid wallet structure');
+        }
     }
     catch (error) {
-        console.error('❌ Error loading wallet:', error);
+        // SECURITY: Sanitized error logging - no secret exposure
+        console.error('❌ Error loading wallet:', error instanceof Error ? error.message : 'Unknown error');
         process.exit(1);
     }
-    console.log('Wallet public key:', keypair.publicKey.toBase58());
     try {
         // Use the enhanced SniperBot with user's target developers
         const targetDevelopers = config.targetDevelopers?.map((dev) => dev.address) || [];
