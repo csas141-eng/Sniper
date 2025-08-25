@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": 1756145351023,
+  "timestamp": 1756145525423,
   "activeSnipes": [
     {
       "tokenMint": "SNIPE2...",
@@ -67,14 +67,14 @@
   },
   "runtimeStats": {
     "startTime": 1756130508201,
-    "uptime": 0,
-    "lastHealthCheck": 1756145081014,
+    "uptime": 13997207,
+    "lastHealthCheck": 1756144505408,
     "memoryUsage": {
-      "rss": 72355840,
-      "heapTotal": 30658560,
-      "heapUsed": 13779264,
-      "external": 1950410,
-      "arrayBuffers": 19411
+      "rss": 46448640,
+      "heapTotal": 4694016,
+      "heapUsed": 4457176,
+      "external": 1419454,
+      "arrayBuffers": 10515
     },
     "wsConnections": {
       "pumpfun": true,

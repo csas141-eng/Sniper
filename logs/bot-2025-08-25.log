@@ -93,3 +93,26 @@
 {"level":"WARN","message":"Circuit breaker manually reset","timestamp":"2025-08-25T18:07:25.450Z"}
 {"level":"ERROR","message":"Circuit breaker OPENED: Single trade loss threshold exceeded: 0.7 SOL","timestamp":"2025-08-25T18:07:25.451Z","context":{"circuitBreaker":"opened","reason":"Single trade loss threshold exceeded: 0.7 SOL"}}
 {"level":"INFO","message":"Trade success recorded","timestamp":"2025-08-25T18:07:25.653Z","context":{"tokenMint":"CALLBACK_TEST","amount":0.01,"profitLoss":0.005,"dailyLoss":0.695,"dailyTrades":2}}
+{"level":"INFO","message":"Bot state loaded from file","timestamp":"2025-08-25T18:09:50.557Z","context":{"activeSnipes":3,"poolsCached":2,"totalTrades":6,"lastSaved":"2025-08-25T18:09:41.025Z"}}
+{"level":"INFO","message":"State persistence auto-save started","timestamp":"2025-08-25T18:09:50.558Z","context":{"intervalMs":30000}}
+{"level":"WARN","message":"Circuit breaker manually reset","timestamp":"2025-08-25T18:09:50.559Z"}
+{"level":"INFO","message":"Trade success recorded","timestamp":"2025-08-25T18:09:50.561Z","context":{"tokenMint":"ABC123...","amount":0.01,"profitLoss":0.005,"dailyLoss":0,"dailyTrades":1}}
+{"level":"INFO","message":"Trade success recorded","timestamp":"2025-08-25T18:09:50.561Z","context":{"tokenMint":"XYZ789...","amount":0.02,"profitLoss":0.01,"dailyLoss":0,"dailyTrades":2}}
+{"level":"ERROR","message":"Trade failure recorded","timestamp":"2025-08-25T18:09:50.561Z","context":{"tokenMint":"FAIL0...","amount":0.01,"profitLoss":-0.01,"error":"Test error 0","dailyLoss":0.01,"consecutiveFailures":1,"dailyTrades":3}}
+{"level":"ERROR","message":"Trade failure recorded","timestamp":"2025-08-25T18:09:50.562Z","context":{"tokenMint":"FAIL1...","amount":0.01,"profitLoss":-0.01,"error":"Test error 1","dailyLoss":0.02,"consecutiveFailures":2,"dailyTrades":4}}
+{"level":"ERROR","message":"Trade failure recorded","timestamp":"2025-08-25T18:09:50.562Z","context":{"tokenMint":"FAIL2...","amount":0.01,"profitLoss":-0.01,"error":"Test error 2","dailyLoss":0.03,"consecutiveFailures":3,"dailyTrades":5}}
+{"level":"ERROR","message":"Trade failure recorded","timestamp":"2025-08-25T18:09:50.562Z","context":{"tokenMint":"FAIL3...","amount":0.01,"profitLoss":-0.01,"error":"Test error 3","dailyLoss":0.04,"consecutiveFailures":4,"dailyTrades":6}}
+{"level":"ERROR","message":"Trade failure recorded","timestamp":"2025-08-25T18:09:50.563Z","context":{"tokenMint":"FAIL4...","amount":0.01,"profitLoss":-0.01,"error":"Test error 4","dailyLoss":0.05,"consecutiveFailures":5,"dailyTrades":7}}
+{"level":"ERROR","message":"Circuit breaker OPENED: Single trade loss threshold exceeded: 0.6 SOL","timestamp":"2025-08-25T18:09:50.563Z","context":{"circuitBreaker":"opened","reason":"Single trade loss threshold exceeded: 0.6 SOL"}}
+{"level":"INFO","message":"Added active snipe to state","timestamp":"2025-08-25T18:09:50.565Z","context":{"tokenMint":"SNIPE1...","platform":"pumpfun","totalActive":4}}
+{"level":"INFO","message":"Added active snipe to state","timestamp":"2025-08-25T18:09:50.565Z","context":{"tokenMint":"SNIPE2...","platform":"raydium","totalActive":5}}
+{"level":"INFO","message":"Updated snipe status","timestamp":"2025-08-25T18:09:50.565Z","context":{"tokenMint":"SNIPE1...","status":"completed","txHash":"tx123..."}}
+{"level":"ERROR","message":"Error recorded in state","timestamp":"2025-08-25T18:09:50.566Z","context":{"errorType":"NETWORK_ERROR","apiName":"solana","totalErrors":5,"consecutiveErrors":1,"error":"Connection failed"}}
+{"level":"ERROR","message":"Error recorded in state","timestamp":"2025-08-25T18:09:50.566Z","context":{"errorType":"API_ERROR","apiName":"pumpfun","totalErrors":6,"consecutiveErrors":2,"error":"Rate limited"}}
+{"level":"INFO","message":"Resetting consecutive error counter","timestamp":"2025-08-25T18:09:50.566Z","context":{"previousConsecutiveErrors":2}}
+{"level":"INFO","message":"Trade recorded in stats","timestamp":"2025-08-25T18:09:50.567Z","context":{"success":true,"profit":0.05,"tradeSize":0.01,"totalTrades":7,"successRate":0.5714285714285714}}
+{"level":"INFO","message":"Trade recorded in stats","timestamp":"2025-08-25T18:09:50.567Z","context":{"success":false,"profit":-0.01,"tradeSize":0.01,"totalTrades":8,"successRate":0.5}}
+{"level":"INFO","message":"WebSocket connection status updated","timestamp":"2025-08-25T18:09:50.567Z","context":{"name":"pumpfun","connected":true}}
+{"level":"INFO","message":"WebSocket connection status updated","timestamp":"2025-08-25T18:09:50.567Z","context":{"name":"raydium","connected":false}}
+{"level":"INFO","message":"Config reload recorded","timestamp":"2025-08-25T18:09:50.567Z","context":{"totalReloads":3}}
+{"level":"INFO","message":"Removed active snipe from state","timestamp":"2025-08-25T18:10:50.566Z","context":{"tokenMint":"SNIPE1...","remainingActive":4}}

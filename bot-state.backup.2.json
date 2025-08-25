@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": 1756145345417,
+  "timestamp": 1756145510563,
   "activeSnipes": [
     {
       "tokenMint": "SNIPE2...",
@@ -23,19 +23,26 @@
       "amount": 0.02,
       "platform": "raydium",
       "status": "executing"
+    },
+    {
+      "tokenMint": "SNIPE2...",
+      "startTime": 1756145390565,
+      "amount": 0.02,
+      "platform": "raydium",
+      "status": "executing"
     }
   ],
   "errorCounters": {
-    "totalErrors": 4,
+    "totalErrors": 6,
     "errorsByType": {
-      "NETWORK_ERROR": 2,
-      "API_ERROR": 2
+      "NETWORK_ERROR": 3,
+      "API_ERROR": 3
     },
     "errorsByApi": {
-      "solana": 2,
-      "pumpfun": 2
+      "solana": 3,
+      "pumpfun": 3
     },
-    "lastErrorTime": 1756144505408,
+    "lastErrorTime": 1756145390566,
     "consecutiveErrors": 0
   },
   "poolsCache": [
@@ -52,27 +59,27 @@
       "poolAddress": "POOLADDR1...",
       "liquidity": 10000,
       "platform": "raydium",
-      "discoveredAt": 1756144505408,
-      "lastUpdated": 1756144505408
+      "discoveredAt": 1756145390566,
+      "lastUpdated": 1756145390566
     }
   ],
   "profitStats": {
-    "totalTrades": 6,
-    "successfulTrades": 3,
-    "totalProfit": 0.125,
-    "totalLoss": 0.03,
+    "totalTrades": 8,
+    "successfulTrades": 4,
+    "totalProfit": 0.175,
+    "totalLoss": 0.04,
     "bestTrade": 0.05,
     "worstTrade": -0.01,
-    "avgTradeSize": 0.018333333333333333
+    "avgTradeSize": 0.01625
   },
   "runtimeStats": {
     "startTime": 1756130508201,
-    "uptime": 13997207,
-    "lastHealthCheck": 1756144505408,
+    "uptime": 14882366,
+    "lastHealthCheck": 1756145390567,
     "memoryUsage": {
-      "rss": 46448640,
+      "rss": 46440448,
       "heapTotal": 4694016,
-      "heapUsed": 4457176,
+      "heapUsed": 4462032,
       "external": 1419454,
       "arrayBuffers": 10515
     },
@@ -80,6 +87,6 @@
       "pumpfun": true,
       "raydium": false
     },
-    "configReloads": 2
+    "configReloads": 3
   }
 }
