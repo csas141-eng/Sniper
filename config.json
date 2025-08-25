@@ -1,11 +1,60 @@
 {
   "solanaRpcUrl": "https://api.mainnet-beta.solana.com",
-  "privateKey":'privatekey' ,
+  "privateKey": "privatekey",
   "targetDevelopers": [{"address": "8tY23wHGVvsAnBWUicc1DqnmCh8ka9VbohqsAU8TYrz4"}],
   "buyAmountSol": 0.01,
   "slippage": 0.1,
   "maxRetries": 3,
   "priorityFee": 5000,
+  "retrySettings": {
+    "maxRetries": 3,
+    "baseDelay": 1000,
+    "maxDelay": 30000,
+    "exponentialBase": 2,
+    "jitterRange": 1000
+  },
+  "rateLimitSettings": {
+    "windowMs": 10000,
+    "maxRequestsPerWindow": 100,
+    "maxRequestsPerMethod": 40,
+    "globalLimit": 200
+  },
+  "apiRetrySettings": {
+    "pumpfun": { 
+      "maxRetries": 3,
+      "baseDelay": 2000
+    },
+    "raydium": { 
+      "maxRetries": 2,
+      "baseDelay": 1500 
+    },
+    "jupiter": { 
+      "maxRetries": 3,
+      "baseDelay": 1000 
+    },
+    "meteora": { 
+      "maxRetries": 2,
+      "baseDelay": 2000 
+    },
+    "solana": { 
+      "maxRetries": 5,
+      "baseDelay": 500 
+    }
+  },
+  "circuitBreaker": {
+    "enabled": true,
+    "dailyLossThreshold": 1.0,
+    "singleLossThreshold": 0.5,
+    "errorThreshold": 10,
+    "recoveryTimeMs": 300000,
+    "monitoringWindowMs": 86400000
+  },
+  "statePersistence": {
+    "enabled": true,
+    "stateFile": "./bot-state.json",
+    "saveIntervalMs": 30000,
+    "maxBackups": 5
+  },
   "tokenValidation": {
     "minLiquidity": 1000,
     "maxMarketCap": 1000000,
@@ -41,13 +90,8 @@
       "logParsing": {
         "enabled": true,
         "patterns": [
-          "Initialize",
-          "CreateToken", 
-          "CreatePool",
-          "NewPool",
-          "PoolCreated",
-          "TokenMinted",
-          "MintToken"
+          "Initialize", "CreateToken", "CreatePool", "NewPool", 
+          "PoolCreated", "TokenMinted", "MintToken"
         ],
         "extractPoolData": true,
         "extractLiquidity": true,
@@ -66,14 +110,8 @@
       "logParsing": {
         "enabled": true,
         "patterns": [
-          "Initialize",
-          "CreatePool",
-          "CreateAmm",
-          "NewPool",
-          "PoolCreated",
-          "AmmCreated",
-          "MarketCreated",
-          "LaunchPool"
+          "Initialize", "CreatePool", "CreateAmm", "NewPool", 
+          "PoolCreated", "AmmCreated", "MarketCreated", "LaunchPool"
         ],
         "extractPoolData": true,
         "extractLiquidity": true,
@@ -88,16 +126,9 @@
       "logParsing": {
         "enabled": true,
         "patterns": [
-          "Initialize.*pool",
-          "Create.*token",
-          "New.*bonding.*curve",
-          "Pool.*created",
-          "Virtual.*pool.*initialized",
-          "Dynamic.*bonding.*curve",
-          "Token.*launched",
-          "Pool.*initialized",
-          "Bonding.*curve.*created",
-          "Virtual.*pool.*created"
+          "Initialize.*pool", "Create.*token", "New.*bonding.*curve",
+          "Pool.*created", "Virtual.*pool.*initialized", "Dynamic.*bonding.*curve",
+          "Token.*launched", "Pool.*initialized", "Bonding.*curve.*created", "Virtual.*pool.*created"
         ],
         "extractPoolData": true,
         "extractLiquidity": true,
@@ -120,82 +151,23 @@
         "rest": "https://pumpportal.fun/api/trade-local"
       },
       "patterns": {
-        "mint": [
-          "mint:",
-          "token:",
-          "address:",
-          "mint=",
-          "token="
-        ],
-        "pool": [
-          "pool:",
-          "poolAddress:",
-          "pool_address:",
-          "pool=",
-          "pool_address="
-        ],
-        "developer": [
-          "authority:",
-          "creator:",
-          "owner:",
-          "deployer:",
-          "initializer:"
-        ]
+        "mint": ["mint:", "token:", "address:", "mint=", "token="],
+        "pool": ["pool:", "poolAddress:", "pool_address:", "pool=", "pool_address="],
+        "developer": ["authority:", "creator:", "owner:", "deployer:", "initializer:"]
       }
     },
     "raydium": {
       "patterns": {
-        "mint": [
-          "mint:",
-          "token:",
-          "baseMint:",
-          "base_mint:",
-          "mint=",
-          "token="
-        ],
-        "pool": [
-          "pool:",
-          "poolAddress:",
-          "pool_address:",
-          "amm:",
-          "pool=",
-          "amm="
-        ],
-        "developer": [
-          "authority:",
-          "creator:",
-          "owner:",
-          "pool creator:",
-          "liquidity provider:",
-          "market maker:"
-        ]
+        "mint": ["mint:", "token:", "baseMint:", "base_mint:", "mint=", "token="],
+        "pool": ["pool:", "poolAddress:", "pool_address:", "amm:", "pool=", "amm="],
+        "developer": ["authority:", "creator:", "owner:", "pool creator:", "liquidity provider:", "market maker:"]
       }
     },
     "meteora": {
       "patterns": {
-        "mint": [
-          "mint:",
-          "token:",
-          "baseMint:",
-          "base_mint:",
-          "address:",
-          "mint=",
-          "token="
-        ],
-        "pool": [
-          "pool:",
-          "poolAddress:",
-          "pool_address:",
-          "pool=",
-          "pool_address="
-        ],
-        "developer": [
-          "authority:",
-          "creator:",
-          "owner:",
-          "deployer:",
-          "initializer:"
-        ]
+        "mint": ["mint:", "token:", "baseMint:", "base_mint:", "address:", "mint=", "token="],
+        "pool": ["pool:", "poolAddress:", "pool_address:", "pool=", "pool_address="],
+        "developer": ["authority:", "creator:", "owner:", "deployer:", "initializer:"]
       }
     }
   },
@@ -218,7 +190,34 @@
   "logging": {
     "level": "info",
     "saveToFile": true,
-    "maxFileSize": "10MB"
+    "maxFileSize": "10MB",
+    "structured": true,
+    "includeTimestamp": true,
+    "includeContext": true
+  },
+  "notifications": {
+    "enabled": true,
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "chatId": ""
+    },
+    "discord": {
+      "enabled": false,
+      "webhookUrl": ""
+    },
+    "email": {
+      "enabled": false,
+      "smtp": {
+        "host": "smtp.gmail.com",
+        "port": 587,
+        "secure": false,
+        "user": "",
+        "pass": ""
+      },
+      "from": "",
+      "to": ""
+    }
   },
   "profitTaking": {
     "enabled": true,

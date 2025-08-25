@@ -1,0 +1,253 @@
+{
+  // === CORE SETTINGS ===
+  "solanaRpcUrl": "https://api.mainnet-beta.solana.com", // Primary Solana RPC endpoint
+  "privateKey": "privatekey", // Your wallet private key (secure this!)
+  "targetDevelopers": [{"address": "8tY23wHGVvsAnBWUicc1DqnmCh8ka9VbohqsAU8TYrz4"}], // Target token developers to snipe
+  "buyAmountSol": 0.01, // Amount in SOL to spend per snipe
+  "slippage": 0.1, // Maximum slippage tolerance (0.1 = 10%)
+  "maxRetries": 3, // Legacy - use retrySettings instead
+  "priorityFee": 5000, // Legacy - use priorityFees instead
+
+  // === CENTRALIZED RETRY & RATE LIMITING ===
+  "retrySettings": {
+    "maxRetries": 3, // Default maximum retry attempts
+    "baseDelay": 1000, // Base delay between retries (ms)
+    "maxDelay": 30000, // Maximum delay between retries (ms)
+    "exponentialBase": 2, // Exponential backoff multiplier
+    "jitterRange": 1000 // Random jitter to prevent thundering herd (ms)
+  },
+  "rateLimitSettings": {
+    "windowMs": 10000, // Rate limit window duration (ms)
+    "maxRequestsPerWindow": 100, // Global requests per window
+    "maxRequestsPerMethod": 40, // Per-method requests per window
+    "globalLimit": 200 // Absolute global request limit per window
+  },
+  "apiRetrySettings": {
+    "pumpfun": { 
+      "maxRetries": 3, // Pump.fun specific retry count
+      "baseDelay": 2000 // Higher delay due to rate limits
+    },
+    "raydium": { 
+      "maxRetries": 2, // Conservative for Raydium
+      "baseDelay": 1500 
+    },
+    "jupiter": { 
+      "maxRetries": 3, // Jupiter is generally reliable
+      "baseDelay": 1000 
+    },
+    "meteora": { 
+      "maxRetries": 2, // Conservative for newer protocols
+      "baseDelay": 2000 
+    },
+    "solana": { 
+      "maxRetries": 5, // Solana RPC can be retried more
+      "baseDelay": 500 
+    }
+  },
+
+  // === CIRCUIT BREAKER SETTINGS ===
+  "circuitBreaker": {
+    "enabled": true, // Enable circuit breaker functionality
+    "dailyLossThreshold": 1.0, // Max daily loss in SOL before halt
+    "singleLossThreshold": 0.5, // Max single trade loss in SOL
+    "errorThreshold": 10, // Max consecutive errors before halt
+    "recoveryTimeMs": 300000, // Time to wait before retry after circuit break (5 min)
+    "monitoringWindowMs": 86400000 // Daily monitoring window (24 hours)
+  },
+
+  // === STATE PERSISTENCE ===
+  "statePersistence": {
+    "enabled": true, // Enable crash recovery
+    "stateFile": "./bot-state.json", // File to persist state
+    "saveIntervalMs": 30000, // How often to save state (30 seconds)
+    "maxBackups": 5 // Number of state file backups to keep
+  },
+  // === TOKEN VALIDATION ===
+  "tokenValidation": {
+    "minLiquidity": 1000, // Minimum liquidity in USD
+    "maxMarketCap": 1000000, // Maximum market cap in USD
+    "minHolders": 10 // Minimum number of holders
+  },
+
+  // === SWAP METHOD CONFIGURATION ===
+  "swapMethods": {
+    "pumpFun": true, // Enable Pump.fun integration
+    "jupiter": true, // Enable Jupiter integration
+    "raydium": true, // Enable Raydium integration
+    "meteora": false, // Enable Meteora integration
+    "bonkFun": false // Enable Bonk.fun integration
+  },
+
+  // === BLOCKCHAIN TIPS & FEES ===
+  "jito": {
+    "enabled": false, // Enable Jito MEV protection
+    "tipAccount": "", // Jito tip account address
+    "tipAmount": 0.001 // Tip amount in SOL
+  },
+  "nozomi": {
+    "enabled": false, // Enable Nozomi MEV protection
+    "tipAccount": "", // Nozomi tip account address
+    "tipAmount": 0.001 // Tip amount in SOL
+  },
+  "priorityFees": {
+    "enabled": true, // Enable priority fees
+    "baseFee": 5000, // Base priority fee in micro-lamports
+    "maxFee": 50000 // Maximum priority fee in micro-lamports
+  },
+  // === PLATFORM-SPECIFIC CONFIGURATION ===
+  "platformConfig": {
+    "pumpFun": {
+      "enabled": true, // Enable Pump.fun sniping
+      "maxRetries": 2, // Max retry attempts for this platform
+      "timeout": 10000, // Request timeout in milliseconds
+      "logParsing": {
+        "enabled": true, // Enable log parsing for new tokens
+        "patterns": [
+          "Initialize", "CreateToken", "CreatePool", "NewPool", 
+          "PoolCreated", "TokenMinted", "MintToken"
+        ],
+        "extractPoolData": true, // Extract pool information
+        "extractLiquidity": true, // Extract liquidity data
+        "extractReserves": true // Extract reserve amounts
+      }
+    },
+    "jupiter": {
+      "enabled": true,
+      "maxRetries": 2,
+      "timeout": 15000 // Higher timeout for Jupiter aggregator
+    },
+    "raydium": {
+      "enabled": true,
+      "maxRetries": 2,
+      "timeout": 12000,
+      "logParsing": {
+        "enabled": true,
+        "patterns": [
+          "Initialize", "CreatePool", "CreateAmm", "NewPool", 
+          "PoolCreated", "AmmCreated", "MarketCreated", "LaunchPool"
+        ],
+        "extractPoolData": true,
+        "extractLiquidity": true,
+        "extractReserves": true,
+        "extractSupply": true // Also extract supply data
+      }
+    },
+    "meteora": {
+      "enabled": false,
+      "maxRetries": 2,
+      "timeout": 10000,
+      "logParsing": {
+        "enabled": true,
+        "patterns": [
+          "Initialize.*pool", "Create.*token", "New.*bonding.*curve",
+          "Pool.*created", "Virtual.*pool.*initialized", "Dynamic.*bonding.*curve",
+          "Token.*launched", "Pool.*initialized", "Bonding.*curve.*created", "Virtual.*pool.*created"
+        ],
+        "extractPoolData": true,
+        "extractLiquidity": true,
+        "extractVirtualReserve": true, // Meteora-specific
+        "extractBondingCurve": true // Meteora-specific
+      }
+    }
+  },
+  // === LOG PARSING CONFIGURATION ===
+  "logParsing": {
+    "global": {
+      "enabled": true, // Enable global log parsing
+      "maxPatterns": 20, // Maximum patterns to search per log
+      "fallbackPatterns": true, // Use fallback patterns if primary fail
+      "extractAllData": true, // Extract all available data
+      "logLevel": "info" // Logging verbosity level
+    },
+    "pumpFun": {
+      "endpoints": {
+        "websocket": "wss://pumpportal.fun/api/data", // WebSocket endpoint
+        "rest": "https://pumpportal.fun/api/trade-local" // REST API endpoint
+      },
+      "patterns": {
+        "mint": ["mint:", "token:", "address:", "mint=", "token="],
+        "pool": ["pool:", "poolAddress:", "pool_address:", "pool=", "pool_address="],
+        "developer": ["authority:", "creator:", "owner:", "deployer:", "initializer:"]
+      }
+    },
+    "raydium": {
+      "patterns": {
+        "mint": ["mint:", "token:", "baseMint:", "base_mint:", "mint=", "token="],
+        "pool": ["pool:", "poolAddress:", "pool_address:", "amm:", "pool=", "amm="],
+        "developer": ["authority:", "creator:", "owner:", "pool creator:", "liquidity provider:", "market maker:"]
+      }
+    },
+    "meteora": {
+      "patterns": {
+        "mint": ["mint:", "token:", "baseMint:", "base_mint:", "address:", "mint=", "token="],
+        "pool": ["pool:", "poolAddress:", "pool_address:", "pool=", "pool_address="],
+        "developer": ["authority:", "creator:", "owner:", "deployer:", "initializer:"]
+      }
+    }
+  },
+
+  // === RISK MANAGEMENT ===
+  "riskManagement": {
+    "maxSlippage": 0.15, // Maximum allowed slippage (15%)
+    "maxGasPrice": 100000, // Maximum gas price in micro-lamports
+    "stopLoss": 0.1, // Stop loss percentage (10%)
+    "takeProfit": 0.2 // Take profit percentage (20%)
+  },
+
+  // === PERFORMANCE SETTINGS ===
+  "performance": {
+    "maxConcurrentSwaps": 1, // Maximum concurrent swap operations
+    "swapDelay": 2000, // Delay between swaps in milliseconds
+    "monitoringInterval": 5000 // Health monitoring interval in milliseconds
+  },
+
+  // === SECURITY SETTINGS ===
+  "security": {
+    "validateTransactions": true, // Enable transaction validation
+    "checkTokenContract": true, // Verify token contracts
+    "maxTransactionRetries": 2 // Max retries for failed transactions
+  },
+
+  // === LOGGING CONFIGURATION ===
+  "logging": {
+    "level": "info", // Log level: debug, info, warn, error
+    "saveToFile": true, // Save logs to file
+    "maxFileSize": "10MB", // Maximum log file size
+    "structured": true, // Enable structured logging
+    "includeTimestamp": true, // Include timestamps in logs
+    "includeContext": true // Include contextual information
+  },
+
+  // === ALERTING & NOTIFICATIONS ===
+  "notifications": {
+    "enabled": true, // Enable notification system
+    "telegram": {
+      "enabled": false, // Enable Telegram notifications
+      "botToken": "", // Telegram bot token
+      "chatId": "" // Telegram chat ID
+    },
+    "discord": {
+      "enabled": false, // Enable Discord notifications
+      "webhookUrl": "" // Discord webhook URL
+    },
+    "email": {
+      "enabled": false, // Enable email notifications
+      "smtp": {
+        "host": "smtp.gmail.com", // SMTP server
+        "port": 587, // SMTP port
+        "secure": false, // Use TLS
+        "user": "", // Email username
+        "pass": "" // Email password or app password
+      },
+      "from": "", // From email address
+      "to": "" // To email address
+    }
+  },
+
+  // === PROFIT TAKING STRATEGY ===
+  "profitTaking": {
+    "enabled": true, // Enable automated profit taking
+    "targetProfit": 0.3, // Target profit percentage (30%)
+    "stopLoss": 0.15 // Stop loss percentage (15%)
+  }
+}
