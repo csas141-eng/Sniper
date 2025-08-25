@@ -1,5 +1,6 @@
 import { Connection, PublicKey, ParsedTransactionWithMeta } from '@solana/web3.js';
 import { SniperBot } from './sniper-bot';
+import { rateLimiter } from './services/rateLimiter';
 // import { DynamicBondingCurveClient } from '@meteora-ag/dynamic-bonding-curve-sdk';
 
 export interface MeteoraTokenInfo {

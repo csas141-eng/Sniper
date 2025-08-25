@@ -13,6 +13,7 @@ import { EnhancedSwapService } from './services/enhanced-swap';
 import { transactionParser } from './services/transaction-parser';
 import { TokenValidator } from './services/token-validator';
 import { BonkFunIntegration } from './services/bonk-fun-integration';
+import { rateLimiter } from './services/rateLimiter';
 import { ProfitTaker, Position } from './services/profit-taker';
 
 // NEW: Updated endpoints for PumpPortal
