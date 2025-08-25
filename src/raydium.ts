@@ -1,4 +1,4 @@
-import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, SystemProgram } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, AccountLayout, MintLayout } from '@solana/spl-token';
 
 // ✅ IMPROVED: Actual Raydium program IDs and constants
@@ -211,31 +211,35 @@ export class Raydium {
         if (!this.isMonitoring) return;
 
         try {
-          // ✅ IMPROVED: Extract developer address with fallback
+          // ✅ IMPROVED: Extract developer address with enhanced fallback and logging
           let developer = this.extractDeveloperFromLogs(logs.logs);
           
-          // If no developer found in logs, try to extract from transaction
+          // If no developer found in logs, try transaction-based extraction
           if (!developer && logs.signature) {
             developer = await this.extractDeveloperFromTransaction(logs.signature);
           }
           
+          // Smart logging: only log the final result to avoid spam
           if (developer) {
-            console.log(`✅ Developer address extracted: ${developer.toBase58()}`);
+            console.log(`✅ Developer extracted for AMM pool: ${developer.toBase58()}`);
           } else {
-            console.log(`⚠️ No developer address found, using wallet as fallback`);
+            // Only log warning occasionally to prevent spam
+            if (Math.random() < 0.1) { // 10% chance to log warning
+              console.log(`⚠️ Using wallet as developer fallback (no developer extracted from logs or transaction)`);
+            }
             developer = this.wallet.publicKey;
           }
 
           const poolInfo = await this.parseRaydiumLogs(logs.logs);
           if (poolInfo) {
-            console.log(`New Raydium pool detected: ${poolInfo.mint.toBase58()} by developer: ${developer.toBase58()}`);
+            console.log(`🎯 New Raydium AMM pool detected: ${poolInfo.mint.toBase58()} | Developer: ${developer.toBase58()}`);
             callback({
               ...poolInfo,
               developer
             });
           }
         } catch (error) {
-          console.error('Error processing Raydium AMM logs:', error);
+          console.error('❌ Error processing Raydium AMM logs:', error instanceof Error ? error.message : 'Unknown error');
         }
       },
       'confirmed'
@@ -248,33 +252,37 @@ export class Raydium {
         if (!this.isMonitoring) return;
 
         try {
-          // ✅ IMPROVED: Extract developer address with fallback
+          // ✅ IMPROVED: Extract developer address with enhanced fallback and logging
           let developer = this.extractDeveloperFromLogs(logs.logs);
           
-          // If no developer found in logs, try to extract from transaction
+          // If no developer found in logs, try transaction-based extraction
           if (!developer && logs.signature) {
             developer = await this.extractDeveloperFromTransaction(logs.signature);
           }
           
+          // Smart logging: only log the final result to avoid spam
           if (developer) {
-            console.log(`✅ Developer address extracted: ${developer.toBase58()}`);
+            console.log(`✅ Developer extracted for CLMM pool: ${developer.toBase58()}`);
           } else {
-            console.log(`⚠️ No developer address found, using wallet as fallback`);
+            // Only log warning occasionally to prevent spam
+            if (Math.random() < 0.1) { // 10% chance to log warning
+              console.log(`⚠️ Using wallet as developer fallback for CLMM pool (no developer extracted)`);
+            }
             developer = this.wallet.publicKey;
           }
 
           const poolInfo = await this.parseRaydiumCLMMLogs(logs.logs);
           if (poolInfo) {
-            console.log(`New Raydium CLMM pool detected: ${poolInfo.mint.toBase58()} by developer: ${developer.toBase58()}`);
+            console.log(`🎯 New Raydium CLMM pool detected: ${poolInfo.mint.toBase58()} | Developer: ${developer.toBase58()}`);
             
-            // ✅ NEW: Pass developer address to callback
-      callback({
+            // ✅ Pass developer address to callback
+            callback({
               ...poolInfo,
               developer
             });
           }
         } catch (error) {
-          console.error('Error parsing Raydium CLMM logs:', error);
+          console.error('❌ Error processing Raydium CLMM logs:', error instanceof Error ? error.message : 'Unknown error');
         }
       },
       'confirmed'
@@ -401,55 +409,102 @@ export class Raydium {
     return null;
   }
 
-  // ✅ IMPROVED: Enhanced developer extraction with better pattern matching
+  // ✅ IMPROVED: Enhanced developer extraction with better pattern matching and reduced log spam
+  // This method analyzes Raydium transaction logs to find the developer/creator address
+  // It uses multiple patterns to identify potential developer addresses and validates them
   private extractDeveloperFromLogs(logs: string[]): PublicKey | null {
     // Filter out generic program logs to reduce noise
     const contentLogs = logs.filter(log => 
       !log.includes('Program invoke:') && 
       !log.includes('Program success:') && 
-      !log.includes('Program return:')
+      !log.includes('Program return:') &&
+      !log.includes('Program consumed:') &&
+      !log.includes('Program log:')
     );
 
     if (contentLogs.length === 0) {
       return null; // No content logs to analyze
     }
 
+    // Enhanced pattern matching with more comprehensive developer address patterns
     const patterns = [
-      /authority: ([A-Za-z0-9]{32,44})/i,
-      /creator: ([A-Za-z0-9]{32,44})/i,
-      /owner: ([A-Za-z0-9]{32,44})/i,
-      /pool creator: ([A-Za-z0-9]{32,44})/i,
-      /liquidity provider: ([A-Za-z0-9]{32,44})/i,
-      /market maker: ([A-Za-z0-9]{32,44})/i,
-      /Raydium program ID: ([A-Za-z0-9]{32,44})/i,
-      // Removed: /([A-Za-z0-9]{32,44})/g // This generic pattern causes too many false positives
+      // Primary patterns - most reliable
+      /authority:\s*([A-Za-z0-9]{32,44})/i,
+      /creator:\s*([A-Za-z0-9]{32,44})/i,
+      /owner:\s*([A-Za-z0-9]{32,44})/i,
+      /deployer:\s*([A-Za-z0-9]{32,44})/i,
+      /initializer:\s*([A-Za-z0-9]{32,44})/i,
+      
+      // Pool-specific patterns
+      /pool\s*creator:\s*([A-Za-z0-9]{32,44})/i,
+      /pool\s*owner:\s*([A-Za-z0-9]{32,44})/i,
+      /pool\s*authority:\s*([A-Za-z0-9]{32,44})/i,
+      
+      // Liquidity patterns
+      /liquidity\s*provider:\s*([A-Za-z0-9]{32,44})/i,
+      /lp\s*creator:\s*([A-Za-z0-9]{32,44})/i,
+      /market\s*maker:\s*([A-Za-z0-9]{32,44})/i,
+      
+      // Alternative formats with equals sign
+      /authority=([A-Za-z0-9]{32,44})/i,
+      /creator=([A-Za-z0-9]{32,44})/i,
+      /owner=([A-Za-z0-9]{32,44})/i,
+      /deployer=([A-Za-z0-9]{32,44})/i,
+      
+      // Token-specific patterns  
+      /token\s*creator:\s*([A-Za-z0-9]{32,44})/i,
+      /mint\s*authority:\s*([A-Za-z0-9]{32,44})/i,
+      /update\s*authority:\s*([A-Za-z0-9]{32,44})/i,
+      
+      // Transaction-specific patterns
+      /fee\s*payer:\s*([A-Za-z0-9]{32,44})/i,
+      /signer:\s*([A-Za-z0-9]{32,44})/i,
+      
+      // Fallback patterns (lower priority)
+      /from:\s*([A-Za-z0-9]{32,44})/i,
+      /source:\s*([A-Za-z0-9]{32,44})/i
     ];
+
+    // Track attempts to reduce spam
+    let extractionAttempts = 0;
+    let validAddressFound = false;
 
     for (const log of contentLogs) {
       for (const pattern of patterns) {
         const match = log.match(pattern);
         if (match && match[1]) {
+          extractionAttempts++;
           try {
             const address = match[1];
-            // ✅ NEW: Validate public key format before creating PublicKey
+            // ✅ Enhanced validation with better error handling
             if (this.isValidPublicKey(address)) {
               const pubkey = new PublicKey(address);
-              console.log(`✅ Developer address extracted from logs: ${pubkey.toBase58()}`);
-              return pubkey;
-            } else {
-              console.log(`⚠️ Invalid public key format: ${address}`);
+              
+              // Additional validation: skip known program IDs and system accounts
+              if (!this.isKnownProgramId(pubkey) && !this.isSystemAccount(pubkey)) {
+                // Only log successful extraction, not every attempt
+                console.log(`✅ Developer address extracted from logs: ${pubkey.toBase58()} (pattern: ${pattern.source})`);
+                return pubkey;
+              } else {
+                // This is a known program/system account, continue searching
+                continue;
+              }
             }
           } catch (error) {
-            console.log(`⚠️ Error creating PublicKey from ${match[1]}: ${error}`);
+            // Reduced error logging to prevent spam
+            if (extractionAttempts <= 3) {
+              console.log(`⚠️ Failed to create PublicKey from ${match[1]}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
           }
         }
       }
     }
 
-    // Only log "No developer address found" if we actually analyzed content logs
-    if (contentLogs.length > 0) {
-      console.log('No developer address found in Raydium logs');
+    // Smart logging: only log meaningful information without spamming
+    if (contentLogs.length > 0 && extractionAttempts > 0) {
+      console.log(`ℹ️ Analyzed ${contentLogs.length} content logs, ${extractionAttempts} potential addresses found, but no valid developer address extracted`);
     }
+    
     return null;
   }
 
@@ -463,37 +518,56 @@ export class Raydium {
     }
   }
 
-  // ✅ NEW: Extract developer address from transaction accounts as fallback
+  // ✅ ENHANCED: Extract developer address from transaction accounts as fallback with improved analysis  
+  // When log parsing fails, this method analyzes the transaction itself to find the developer
+  // It looks at signers, fee payers, and writable accounts to identify the most likely developer
   private async extractDeveloperFromTransaction(signature: string): Promise<PublicKey | null> {
     try {
-      console.log(`🔍 Attempting to extract developer from transaction: ${signature}`);
+      console.log(`🔍 Attempting transaction-based developer extraction for: ${signature}`);
       
-      // Get transaction details
+      // Get transaction details with version support
       const transaction = await this.connection.getTransaction(signature, {
         commitment: 'confirmed',
         maxSupportedTransactionVersion: 0
       });
       
       if (!transaction || !transaction.meta) {
-        console.log(`⚠️ Transaction not found or no metadata`);
+        console.log(`⚠️ Transaction not found or missing metadata: ${signature}`);
         return null;
       }
       
-      // Get account keys from the transaction
+      // Get account keys from the transaction (handles both legacy and versioned transactions)
       const accountKeys = transaction.transaction.message.getAccountKeys();
-      if (!accountKeys) {
-        console.log(`⚠️ No account keys found in transaction`);
+      
+      if (!accountKeys || accountKeys.length === 0) {
+        console.log(`⚠️ No account keys found in transaction: ${signature}`);
         return null;
       }
       
-      // Look for the fee payer (often the developer)
+      // Strategy 1: Check the fee payer (first account, often the developer/creator)
       const feePayer = accountKeys.get(0);
-      if (feePayer && !this.isKnownProgramId(feePayer)) {
+      if (feePayer && !this.isKnownProgramId(feePayer) && !this.isSystemAccount(feePayer)) {
         console.log(`🎯 Using fee payer as developer: ${feePayer.toBase58()}`);
         return feePayer;
       }
       
-      // Look for writable accounts that could be the developer
+      // Strategy 2: Look for accounts that are signers but not programs
+      const signerAccounts: PublicKey[] = [];
+      for (let i = 0; i < Math.min(accountKeys.length, transaction.transaction.message.header.numRequiredSignatures); i++) {
+        const account = accountKeys.get(i);
+        if (account) {
+          signerAccounts.push(account);
+        }
+      }
+      
+      for (const signer of signerAccounts) {
+        if (!this.isKnownProgramId(signer) && !this.isSystemAccount(signer)) {
+          console.log(`🎯 Using signer account as developer: ${signer.toBase58()}`);
+          return signer;
+        }
+      }
+      
+      // Strategy 3: Look for writable accounts that aren't system accounts
       const writableAccounts: PublicKey[] = [];
       for (let i = 0; i < accountKeys.length; i++) {
         if (transaction.transaction.message.isAccountWritable(i)) {
@@ -504,18 +578,36 @@ export class Raydium {
         }
       }
       
+      // Prioritize writable accounts that aren't system accounts
       for (const account of writableAccounts) {
-        if (!this.isKnownProgramId(account) && !this.isCommonAddress(account)) {
+        if (!this.isKnownProgramId(account) && !this.isSystemAccount(account)) {
           console.log(`🎯 Using writable account as developer: ${account.toBase58()}`);
           return account;
         }
       }
       
-      console.log(`❌ No suitable developer address found in transaction`);
+      // Strategy 4: Last resort - check all unique non-system accounts
+      const allAccounts = new Set<string>();
+      for (let i = 0; i < accountKeys.length; i++) {
+        const account = accountKeys.get(i);
+        if (account) {
+          allAccounts.add(account.toBase58());
+        }
+      }
+      
+      for (const accountStr of allAccounts) {
+        const account = new PublicKey(accountStr);
+        if (!this.isKnownProgramId(account) && !this.isSystemAccount(account)) {
+          console.log(`🎯 Using fallback account as potential developer: ${account.toBase58()}`);
+          return account;
+        }
+      }
+      
+      console.log(`❌ No suitable developer address found in transaction ${signature} (analyzed ${accountKeys.length} accounts)`);
       return null;
       
     } catch (error) {
-      console.error(`Error extracting developer from transaction:`, error);
+      console.error(`❌ Error in transaction-based developer extraction for ${signature}:`, error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   }
@@ -526,19 +618,29 @@ export class Raydium {
       RAYDIUM_AMM_PROGRAM_ID,
       RAYDIUM_CLMM_PROGRAM_ID,
       RAYDIUM_MARKET_PROGRAM_ID,
-      TOKEN_PROGRAM_ID
+      TOKEN_PROGRAM_ID,
+      // Add more common program IDs
+      SystemProgram.programId,
+      new PublicKey('11111111111111111111111111111112'), // System Program
+      new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'), // Token Program
+      new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'), // Associated Token Program
     ];
     return knownPrograms.some(program => program.equals(pubkey));
   }
 
-  // ✅ NEW: Check if a public key is a common/known address
-  private isCommonAddress(pubkey: PublicKey): boolean {
-    // Add common addresses that shouldn't be considered developers
-    const commonAddresses: PublicKey[] = [
-      // Add any common addresses here
+  // ✅ NEW: Check if a public key is a system/common address that shouldn't be considered a developer
+  private isSystemAccount(pubkey: PublicKey): boolean {
+    const systemAccounts = [
+      new PublicKey('11111111111111111111111111111111'), // Default/null PublicKey
+      new PublicKey('So11111111111111111111111111111111111111112'), // WSOL mint
+      new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'), // USDC mint
+      new PublicKey('Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'), // USDT mint
+      // Add other common system accounts that aren't developers
     ];
-    return commonAddresses.some(addr => addr.equals(pubkey));
+    return systemAccounts.some(account => account.equals(pubkey));
   }
+
+
 
   // ✅ IMPROVED: Better buy transaction creation with actual Raydium logic
   async createBuyTransaction(tokenMint: PublicKey, amount: number, slippage: number): Promise<Transaction> {
