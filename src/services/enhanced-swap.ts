@@ -146,18 +146,39 @@ export interface SwapResult {
   executionTime: number;
 }
 
-// Rate limiting for public Solana API
+// Enhanced rate limiting with configurable settings and 429 handling
+// This class helps prevent hitting API rate limits by tracking requests over time windows
+// Key features:
+// - Separate limits for different methods (Jupiter, Pump.fun, etc.)
+// - Configurable time windows and request limits
+// - Proactive rate limiting (waits before hitting limits)
+// - Prevents log spam with cooldown periods between warnings
 class RateLimiter {
   private requestCounts: Map<string, number[]> = new Map();
-  private readonly windowMs = 10000; // 10 seconds
-  private readonly maxRequestsPerWindow = 100;
-  private readonly maxRequestsPerMethod = 40;
+  private lastRateLimitWarning: Map<string, number> = new Map();
+  
+  // Configuration - can be made configurable via config.json
+  private readonly windowMs: number;
+  private readonly maxRequestsPerWindow: number;
+  private readonly maxRequestsPerMethod: number;
+  private readonly warningCooldownMs = 10000; // 10 seconds between warnings
+  
+  constructor(config?: {
+    windowMs?: number;
+    maxRequestsPerWindow?: number;
+    maxRequestsPerMethod?: number;
+  }) {
+    // Default configuration with ability to override
+    this.windowMs = config?.windowMs || 10000; // 10 seconds
+    this.maxRequestsPerWindow = config?.maxRequestsPerWindow || 100;
+    this.maxRequestsPerMethod = config?.maxRequestsPerMethod || 40;
+  }
   
   async waitForRateLimit(method: string = 'general'): Promise<void> {
     const now = Date.now();
     const windowStart = now - this.windowMs;
     
-    // Clean old timestamps
+    // Initialize tracking if needed
     if (!this.requestCounts.has(method)) {
       this.requestCounts.set(method, []);
     }
@@ -168,44 +189,119 @@ class RateLimiter {
     const methodRequests = this.requestCounts.get(method)!;
     const generalRequests = this.requestCounts.get('general')!;
     
-    // Remove old timestamps
+    // Clean old timestamps (remove requests outside the window)
     const filteredMethodRequests = methodRequests.filter(time => time > windowStart);
     const filteredGeneralRequests = generalRequests.filter(time => time > windowStart);
     
-    // Check if we're at the limit
+    // Check method-specific rate limit
     if (filteredMethodRequests.length >= this.maxRequestsPerMethod) {
       const oldestRequest = Math.min(...filteredMethodRequests);
-      const waitTime = this.windowMs - (now - oldestRequest) + 100;
-      console.log(`⏳ Rate limit reached for ${method}, waiting ${Math.round(waitTime)}ms...`);
+      const waitTime = this.windowMs - (now - oldestRequest) + 100; // Add small buffer
+      
+      // Only log warning occasionally to avoid spam
+      const lastWarning = this.lastRateLimitWarning.get(method) || 0;
+      if (now - lastWarning > this.warningCooldownMs) {
+        console.log(`⏳ Method rate limit reached for '${method}' (${filteredMethodRequests.length}/${this.maxRequestsPerMethod}), waiting ${Math.round(waitTime)}ms...`);
+        this.lastRateLimitWarning.set(method, now);
+      }
+      
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     
+    // Check global rate limit
     if (filteredGeneralRequests.length >= this.maxRequestsPerWindow) {
       const oldestRequest = Math.min(...filteredGeneralRequests);
-      const waitTime = this.windowMs - (now - oldestRequest) + 100;
-      console.log(`⏳ General rate limit reached, waiting ${Math.round(waitTime)}ms...`);
+      const waitTime = this.windowMs - (now - oldestRequest) + 100; // Add small buffer
+      
+      // Only log warning occasionally to avoid spam
+      const lastWarning = this.lastRateLimitWarning.get('general') || 0;
+      if (now - lastWarning > this.warningCooldownMs) {
+        console.log(`⏳ Global rate limit reached (${filteredGeneralRequests.length}/${this.maxRequestsPerWindow}), waiting ${Math.round(waitTime)}ms...`);
+        this.lastRateLimitWarning.set('general', now);
+      }
+      
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     
-    // Add current request
+    // Add current request to tracking
     filteredMethodRequests.push(now);
     filteredGeneralRequests.push(now);
     
     this.requestCounts.set(method, filteredMethodRequests);
     this.requestCounts.set('general', filteredGeneralRequests);
   }
+  
+  // ✅ NEW: Get current rate limit stats for monitoring
+  getRateLimitStats(): { method: string; currentRequests: number; maxRequests: number }[] {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    const stats: { method: string; currentRequests: number; maxRequests: number }[] = [];
+    
+    for (const [method, requests] of this.requestCounts.entries()) {
+      const activeRequests = requests.filter(time => time > windowStart).length;
+      const maxRequests = method === 'general' ? this.maxRequestsPerWindow : this.maxRequestsPerMethod;
+      stats.push({ method, currentRequests: activeRequests, maxRequests });
+    }
+    
+    return stats;
+  }
+  
+  // ✅ NEW: Check if a method is currently rate limited
+  isRateLimited(method: string = 'general'): boolean {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    const requests = this.requestCounts.get(method) || [];
+    const activeRequests = requests.filter(time => time > windowStart).length;
+    const maxRequests = method === 'general' ? this.maxRequestsPerWindow : this.maxRequestsPerMethod;
+    return activeRequests >= maxRequests;
+  }
 }
 
-const rateLimiter = new RateLimiter();
+// Create rate limiter with configuration from config
+let rateLimiterConfig: any = {};
+try {
+  const configData = JSON.parse(require('fs').readFileSync('./config.json', 'utf8'));
+  rateLimiterConfig = {
+    windowMs: configData.performance?.rateLimitWindow || 10000,
+    maxRequestsPerWindow: configData.performance?.maxRequestsPerWindow || 100,
+    maxRequestsPerMethod: configData.performance?.maxRequestsPerMethod || 40
+  };
+} catch (error) {
+  // Use defaults if config loading fails
+  rateLimiterConfig = {
+    windowMs: 10000,
+    maxRequestsPerWindow: 100,
+    maxRequestsPerMethod: 40
+  };
+}
 
-// Enhanced retry logic with rate limiting
+const rateLimiter = new RateLimiter(rateLimiterConfig);
+
+// Enhanced retry logic with specific HTTP 429 handling and configurable settings
+// This function provides robust retry mechanisms for external API calls
+// Key features:
+// - Detects HTTP 429 (Too Many Requests) errors and applies appropriate backoff
+// - Uses exponential backoff to avoid overwhelming rate-limited services  
+// - Configurable retry counts, delays, and backoff strategies
+// - Provides clear logging for debugging rate limit issues
 async function executeWithRetry<T>(
   operation: () => Promise<T>,
   method: string = 'general',
-  maxRetries: number = 2, // Reduced for public API
-  baseDelay: number = 2000 // Increased delay
+  maxRetries: number = 3, // Made configurable
+  baseDelay: number = 1000, // Reduced default base delay
+  config?: {
+    handle429: boolean;
+    exponentialBackoff: boolean;
+    maxDelay: number;
+  }
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: Error | undefined;
+  const retryConfig = {
+    handle429: true,
+    exponentialBackoff: true,
+    maxDelay: 30000, // Maximum 30 second delay
+    ...config
+  };
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -216,28 +312,78 @@ async function executeWithRetry<T>(
     } catch (error) {
       lastError = error as Error;
       
-      if (attempt === maxRetries) {
-        throw lastError;
+      // ✅ NEW: Special handling for HTTP 429 (Too Many Requests) errors
+      // HTTP 429 indicates we're hitting rate limits - need longer delays and special handling
+      const is429Error = error instanceof Error && (
+        error.message.includes('429') || 
+        error.message.includes('Too Many Requests') || 
+        error.message.includes('Rate limit') ||
+        error.message.includes('rate limit') ||
+        error.message.includes('rate_limit_exceeded')
+      );
+
+      if (is429Error && retryConfig.handle429) {
+        // Use exponential backoff for 429 errors with longer delays
+        const delay429 = retryConfig.exponentialBackoff 
+          ? Math.min(baseDelay * Math.pow(2, attempt), retryConfig.maxDelay)
+          : baseDelay * 2; // Fixed multiplier if not using exponential backoff
+          
+        console.log(`🚫 HTTP 429 Rate Limited (${method}) - Attempt ${attempt}/${maxRetries}. Waiting ${Math.round(delay429)}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay429));
+        
+        if (attempt < maxRetries) {
+          console.log(`🔄 Retrying after 429 rate limit (attempt ${attempt + 1}/${maxRetries})...`);
+          continue;
+        }
+      } else if (attempt < maxRetries) {
+        // Standard exponential backoff with jitter for non-429 errors
+        const delay = retryConfig.exponentialBackoff
+          ? baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000
+          : baseDelay + Math.random() * 1000;
+          
+        console.log(`⚠️ ${method} failed (attempt ${attempt}/${maxRetries}), retrying in ${Math.round(delay)}ms... Error: ${lastError.message}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-      
-      // Exponential backoff with jitter
-      const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 2000;
-      console.log(`⚠️ Attempt ${attempt} failed, retrying in ${Math.round(delay)}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
   
-  throw lastError!;
+  // Enhanced error reporting
+  if (lastError && lastError instanceof Error && lastError.message.includes('429')) {
+    console.error(`❌ ${method} failed after ${maxRetries} attempts due to persistent rate limiting (HTTP 429)`);
+    throw new Error(`Rate limited: ${method} failed after ${maxRetries} attempts with persistent 429 errors`);
+  }
+  
+  console.error(`❌ ${method} failed after ${maxRetries} attempts. Final error: ${lastError ? lastError.message : 'Unknown error'}`);
+  throw lastError || new Error(`Unknown error in ${method}`);
 }
 
 export class EnhancedSwapService {
   private connection: Connection;
   private jitoConnection?: Connection;
   private nozomiConnection?: Connection;
+  private config: any;
 
-  constructor(connection: Connection) {
+  constructor(connection: Connection, config?: any) {
     this.connection = connection;
+    this.config = config || this.loadDefaultConfig();
     this.initializeConnections();
+  }
+
+  // ✅ NEW: Load default configuration for retry settings
+  private loadDefaultConfig(): any {
+    try {
+      const configData = fs.readFileSync('./config.json', 'utf8');
+      return JSON.parse(configData);
+    } catch (error) {
+      // Return sensible defaults
+      return {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 30000,
+        exponentialBackoff: true,
+        handle429: true
+      };
+    }
   }
 
   private initializeConnections(): void {
@@ -368,14 +514,18 @@ export class EnhancedSwapService {
       // Sign transaction first
       transaction.sign(request.wallet);
       
-      // Send signed transaction with rate limiting
+      // Send signed transaction with enhanced retry and 429 handling
       const signature = await executeWithRetry(async () => {
         return await this.connection.sendTransaction(transaction, [], {
           skipPreflight: false,
           maxRetries: 2,
           preflightCommitment: 'confirmed'
         });
-      }, 'send_transaction');
+      }, 'send_transaction', this.config.maxRetries, this.config.baseDelay, {
+        handle429: this.config.handle429,
+        exponentialBackoff: this.config.exponentialBackoff,
+        maxDelay: this.config.maxDelay
+      });
 
       console.log(`📡 Transaction sent: ${signature}`);
 
@@ -442,14 +592,18 @@ export class EnhancedSwapService {
       
       console.log(`📡 Sending Raydium swap transaction...`);
       
-      // Send transaction with retries and rate limiting
+      // Send transaction with enhanced retries and 429 handling
       const signature = await executeWithRetry(async () => {
         return await this.connection.sendTransaction(transaction, [], {
           skipPreflight: false,
           maxRetries: 2,
           preflightCommitment: 'confirmed'
         });
-      }, 'send_transaction');
+      }, 'send_transaction', this.config.maxRetries, this.config.baseDelay, {
+        handle429: this.config.handle429,
+        exponentialBackoff: this.config.exponentialBackoff,
+        maxDelay: this.config.maxDelay
+      });
 
       console.log(`📡 Raydium transaction sent: ${signature}`);
 
@@ -504,8 +658,9 @@ export class EnhancedSwapService {
 
       console.log(`📡 Pump.fun bonding curve request:`, swapRequest);
 
+      // ✅ Enhanced Pump.fun API call with 429 handling
       const response = await executeWithRetry(async () => {
-        return await fetch(pumpFunUrl, {
+        const resp = await fetch(pumpFunUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -513,12 +668,18 @@ export class EnhancedSwapService {
           },
           body: JSON.stringify(swapRequest)
         });
-      }, 'pumpfun_api');
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Pump.fun bonding curve API error: ${response.status} - ${errorText}`);
-      }
+        if (!resp.ok) {
+          const errorText = await resp.text();
+          throw new Error(`Pump.fun bonding curve API error: ${resp.status} - ${errorText}`);
+        }
+
+        return resp;
+      }, 'pumpfun_api', this.config.maxRetries, this.config.baseDelay, {
+        handle429: this.config.handle429,
+        exponentialBackoff: this.config.exponentialBackoff,
+        maxDelay: this.config.maxDelay
+      });
 
       // Pump.fun returns a serialized transaction
       const transactionData = await response.arrayBuffer();
@@ -548,14 +709,18 @@ export class EnhancedSwapService {
       // Sign the transaction before sending
       transaction.sign(request.wallet);
       
-      // Execute the transaction using the connection with rate limiting
+      // Execute the transaction using enhanced retry with 429 handling
       const signature = await executeWithRetry(async () => {
         return await this.connection.sendTransaction(transaction, [], {
           skipPreflight: false,
           maxRetries: 2,
           preflightCommitment: 'confirmed'
         });
-      }, 'send_transaction');
+      }, 'send_transaction', this.config.maxRetries, this.config.baseDelay, {
+        handle429: this.config.handle429,
+        exponentialBackoff: this.config.exponentialBackoff,
+        maxDelay: this.config.maxDelay
+      });
 
       console.log(`✅ Pump.fun bonding curve swap executed: ${signature}`);
 
@@ -833,12 +998,11 @@ export class EnhancedSwapService {
     }
   }
 
-  // Get Jupiter quote for token swap
+  // Get Jupiter quote for token swap with enhanced retry and 429 handling
   private async getJupiterQuote(request: SwapRequest): Promise<any> {
     try {
       console.log(`🔍 Getting Jupiter quote for ${request.outputMint}`);
       
-      // FIXED: Use working Jupiter API with GET and query parameters
       const jupiterQuoteUrl = 'https://quote-api.jup.ag/quote';
       
       // Build query parameters
@@ -854,25 +1018,36 @@ export class EnhancedSwapService {
       const fullUrl = `${jupiterQuoteUrl}?${params.toString()}`;
       console.log(`📡 Jupiter quote request:`, fullUrl);
 
-      const response = await fetch(fullUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'SBSniper-Bot/1.0.0'
-        }
-      });
+      // ✅ Use enhanced retry with 429 handling
+      const response = await executeWithRetry(async () => {
+        const resp = await fetch(fullUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'SBSniper-Bot/1.0.0',
+            'Accept': 'application/json'
+          }
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ Jupiter API error ${response.status}:`, errorText);
-        throw new Error(`Jupiter API error: ${response.status} - ${errorText}`);
-      }
+        // Check for HTTP errors including 429
+        if (!resp.ok) {
+          const errorText = await resp.text();
+          console.error(`❌ Jupiter API error ${resp.status}:`, errorText);
+          throw new Error(`Jupiter API error: ${resp.status} - ${errorText}`);
+        }
+
+        return resp;
+      }, 'jupiter_quote', this.config.maxRetries, this.config.baseDelay, {
+        handle429: this.config.handle429,
+        exponentialBackoff: this.config.exponentialBackoff,
+        maxDelay: this.config.maxDelay
+      });
 
       const quote = await response.json();
       console.log(`✅ Jupiter quote received: ${quote.outAmount} output tokens`);
       
       return quote;
     } catch (error) {
-      console.error(`❌ Jupiter quote failed:`, error);
+      console.error(`❌ Jupiter quote failed after retries:`, error instanceof Error ? error.message : 'Unknown error');
       throw new Error(`Jupiter quote failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -930,21 +1105,30 @@ export class EnhancedSwapService {
         wrapUnwrapSOL: true
       };
 
-      const swapResponse = await fetch(swapUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'SBSniper-Bot/1.0.0',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(swapBody)
-      });
+      // ✅ Use enhanced retry with 429 handling for Jupiter swap API
+      const swapResponse = await executeWithRetry(async () => {
+        const resp = await fetch(swapUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'SBSniper-Bot/1.0.0',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(swapBody)
+        });
 
-      if (!swapResponse.ok) {
-        const errorText = await swapResponse.text();
-        console.error(`❌ Jupiter swap API error ${swapResponse.status}:`, errorText);
-        throw new Error(`Jupiter swap API error: ${swapResponse.status} - ${errorText}`);
-      }
+        if (!resp.ok) {
+          const errorText = await resp.text();
+          console.error(`❌ Jupiter swap API error ${resp.status}:`, errorText);
+          throw new Error(`Jupiter swap API error: ${resp.status} - ${errorText}`);
+        }
+
+        return resp;
+      }, 'jupiter_swap', this.config.maxRetries, this.config.baseDelay, {
+        handle429: this.config.handle429,
+        exponentialBackoff: this.config.exponentialBackoff,
+        maxDelay: this.config.maxDelay
+      });
 
       const swapData = await swapResponse.json();
       
