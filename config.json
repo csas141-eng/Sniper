@@ -1,6 +1,6 @@
 {
   "solanaRpcUrl": "https://api.mainnet-beta.solana.com",
-  "privateKey":'privatekey' ,
+  "privateKey": "privatekey",
   "targetDevelopers": [{"address": "8tY23wHGVvsAnBWUicc1DqnmCh8ka9VbohqsAU8TYrz4"}],
   "buyAmountSol": 0.01,
   "slippage": 0.1,
