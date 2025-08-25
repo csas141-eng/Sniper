@@ -2,11 +2,11 @@
   "isOpen": true,
   "isHalfOpen": false,
   "failureCount": 6,
-  "lastFailureTime": 1756130830074,
-  "lastSuccessTime": 1756130830071,
-  "nextAttemptTime": 1756131130074,
+  "lastFailureTime": 1756144505405,
+  "lastSuccessTime": 1756144505403,
+  "nextAttemptTime": 1756144805405,
   "dailyLoss": 0.65,
-  "dailyTrades": 9,
-  "lastResetTime": 1756130827758,
+  "dailyTrades": 8,
+  "lastResetTime": 1756144505401,
   "consecutiveFailures": 6
 }
