@@ -27,6 +27,19 @@ export interface NotificationData {
   amount?: number;
   price?: number;
   platform?: string;
+  // Security-related data
+  address?: string;
+  reason?: string;
+  severity?: string;
+  pattern?: string;
+  riskScore?: number;
+  metrics?: any;
+  id?: string;
+  action?: string;
+  riskLevel?: string;
+  details?: any;
+  blacklisted?: any[];
+  [key: string]: any; // Allow additional properties
 }
 
 export class NotificationService {
