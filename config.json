@@ -1,0 +1,228 @@
+{
+  "solanaRpcUrl": "https://api.mainnet-beta.solana.com",
+  "privateKey":'privatekey' ,
+  "targetDevelopers": [{"address": "8tY23wHGVvsAnBWUicc1DqnmCh8ka9VbohqsAU8TYrz4"}],
+  "buyAmountSol": 0.01,
+  "slippage": 0.1,
+  "maxRetries": 3,
+  "priorityFee": 5000,
+  "tokenValidation": {
+    "minLiquidity": 1000,
+    "maxMarketCap": 1000000,
+    "minHolders": 10
+  },
+  "swapMethods": {
+    "pumpFun": true,
+    "jupiter": true,
+    "raydium": true,
+    "meteora": false,
+    "bonkFun": false
+  },
+  "jito": {
+    "enabled": false,
+    "tipAccount": "",
+    "tipAmount": 0.001
+  },
+  "nozomi": {
+    "enabled": false,
+    "tipAccount": "",
+    "tipAmount": 0.001
+  },
+  "priorityFees": {
+    "enabled": true,
+    "baseFee": 5000,
+    "maxFee": 50000
+  },
+  "platformConfig": {
+    "pumpFun": {
+      "enabled": true,
+      "maxRetries": 2,
+      "timeout": 10000,
+      "logParsing": {
+        "enabled": true,
+        "patterns": [
+          "Initialize",
+          "CreateToken", 
+          "CreatePool",
+          "NewPool",
+          "PoolCreated",
+          "TokenMinted",
+          "MintToken"
+        ],
+        "extractPoolData": true,
+        "extractLiquidity": true,
+        "extractReserves": true
+      }
+    },
+    "jupiter": {
+      "enabled": true,
+      "maxRetries": 2,
+      "timeout": 15000
+    },
+    "raydium": {
+      "enabled": true,
+      "maxRetries": 2,
+      "timeout": 12000,
+      "logParsing": {
+        "enabled": true,
+        "patterns": [
+          "Initialize",
+          "CreatePool",
+          "CreateAmm",
+          "NewPool",
+          "PoolCreated",
+          "AmmCreated",
+          "MarketCreated",
+          "LaunchPool"
+        ],
+        "extractPoolData": true,
+        "extractLiquidity": true,
+        "extractReserves": true,
+        "extractSupply": true
+      }
+    },
+    "meteora": {
+      "enabled": false,
+      "maxRetries": 2,
+      "timeout": 10000,
+      "logParsing": {
+        "enabled": true,
+        "patterns": [
+          "Initialize.*pool",
+          "Create.*token",
+          "New.*bonding.*curve",
+          "Pool.*created",
+          "Virtual.*pool.*initialized",
+          "Dynamic.*bonding.*curve",
+          "Token.*launched",
+          "Pool.*initialized",
+          "Bonding.*curve.*created",
+          "Virtual.*pool.*created"
+        ],
+        "extractPoolData": true,
+        "extractLiquidity": true,
+        "extractVirtualReserve": true,
+        "extractBondingCurve": true
+      }
+    }
+  },
+  "logParsing": {
+    "global": {
+      "enabled": true,
+      "maxPatterns": 20,
+      "fallbackPatterns": true,
+      "extractAllData": true,
+      "logLevel": "info"
+    },
+    "pumpFun": {
+      "endpoints": {
+        "websocket": "wss://pumpportal.fun/api/data",
+        "rest": "https://pumpportal.fun/api/trade-local"
+      },
+      "patterns": {
+        "mint": [
+          "mint:",
+          "token:",
+          "address:",
+          "mint=",
+          "token="
+        ],
+        "pool": [
+          "pool:",
+          "poolAddress:",
+          "pool_address:",
+          "pool=",
+          "pool_address="
+        ],
+        "developer": [
+          "authority:",
+          "creator:",
+          "owner:",
+          "deployer:",
+          "initializer:"
+        ]
+      }
+    },
+    "raydium": {
+      "patterns": {
+        "mint": [
+          "mint:",
+          "token:",
+          "baseMint:",
+          "base_mint:",
+          "mint=",
+          "token="
+        ],
+        "pool": [
+          "pool:",
+          "poolAddress:",
+          "pool_address:",
+          "amm:",
+          "pool=",
+          "amm="
+        ],
+        "developer": [
+          "authority:",
+          "creator:",
+          "owner:",
+          "pool creator:",
+          "liquidity provider:",
+          "market maker:"
+        ]
+      }
+    },
+    "meteora": {
+      "patterns": {
+        "mint": [
+          "mint:",
+          "token:",
+          "baseMint:",
+          "base_mint:",
+          "address:",
+          "mint=",
+          "token="
+        ],
+        "pool": [
+          "pool:",
+          "poolAddress:",
+          "pool_address:",
+          "pool=",
+          "pool_address="
+        ],
+        "developer": [
+          "authority:",
+          "creator:",
+          "owner:",
+          "deployer:",
+          "initializer:"
+        ]
+      }
+    }
+  },
+  "riskManagement": {
+    "maxSlippage": 0.15,
+    "maxGasPrice": 100000,
+    "stopLoss": 0.1,
+    "takeProfit": 0.2
+  },
+  "performance": {
+    "maxConcurrentSwaps": 1,
+    "swapDelay": 2000,
+    "monitoringInterval": 5000
+  },
+  "security": {
+    "validateTransactions": true,
+    "checkTokenContract": true,
+    "maxTransactionRetries": 2
+  },
+  "logging": {
+    "level": "info",
+    "saveToFile": true,
+    "maxFileSize": "10MB"
+  },
+  "profitTaking": {
+    "enabled": true,
+    "targetProfit": 0.3,
+    "stopLoss": 0.15
+  }
+}

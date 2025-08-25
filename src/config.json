@@ -1,0 +1,79 @@
+{
+  "solanaRpcUrl": "https://api.mainnet-beta.solana.com",
+  "privateKey": [166,87,57,142,254,235,45,181,55,36,194,236,158,116,153,191,34,199,216,169,210,138,210,183,130,166,124,159,176,38,231,83,117,53,128,133,189,203,105,224,218,159,219,139,226,126,84,57,228,30,72,156,176,26,78,113,10,156,45,117,189,55,47,233],
+  "targetDevelopers": [{"address": "8tY23wHGVvsAnBWUicc1DqnmCh8ka9VbohqsAU8TYrz4"}],
+  "buyAmountSol": 0.01,
+  "slippage": 0.1,
+  "maxRetries": 3,
+  "priorityFee": 5000,
+  "tokenValidation": {
+    "minLiquidity": 1000,
+    "maxMarketCap": 1000000,
+    "minHolders": 10
+  },
+  "swapMethods": {
+    "pumpFun": true,
+    "jupiter": true,
+    "raydium": true,
+    "meteora": false,
+    "bonkFun": false
+  },
+  "jito": {
+    "enabled": false,
+    "tipAccount": "",
+    "tipAmount": 0.001
+  },
+  "nozomi": {
+    "enabled": false,
+    "tipAccount": "",
+    "tipAmount": 0.001
+  },
+  "priorityFees": {
+    "enabled": true,
+    "baseFee": 5000,
+    "maxFee": 50000
+  },
+  "platformConfig": {
+    "pumpFun": {
+      "enabled": true,
+      "maxRetries": 2,
+      "timeout": 10000
+    },
+    "jupiter": {
+      "enabled": true,
+      "maxRetries": 2,
+      "timeout": 15000
+    },
+    "raydium": {
+      "enabled": true,
+      "maxRetries": 2,
+      "timeout": 12000
+    }
+  },
+  "riskManagement": {
+    "maxSlippage": 0.15,
+    "maxGasPrice": 100000,
+    "stopLoss": 0.1,
+    "takeProfit": 0.2
+  },
+  "performance": {
+    "maxConcurrentSwaps": 1,
+    "swapDelay": 2000,
+    "monitoringInterval": 5000
+  },
+  "security": {
+    "validateTransactions": true,
+    "checkTokenContract": true,
+    "maxTransactionRetries": 2
+  },
+  "logging": {
+    "level": "info",
+    "saveToFile": true,
+    "maxFileSize": "10MB"
+  },
+  "profitTaking": {
+    "enabled": true,
+    "targetProfit": 0.3,
+    "stopLoss": 0.15
+  }
+}

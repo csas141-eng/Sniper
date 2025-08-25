@@ -1,0 +1,47 @@
+{
+  "name": "solana-sniper-bot",
+  "version": "1.0.0",
+  "description": "Advanced Solana sniper bot with multi-platform support and risk management",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "clean": "rimraf dist",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "solana",
+    "sniper",
+    "trading",
+    "bot",
+    "defi",
+    "crypto"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@raydium-io/raydium-sdk": "^1.3.1-beta.58",
+    "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.90.0",
+    "axios": "^1.6.0",
+    "bs58": "^5.0.0",
+    "letsbonkdotfun-sdk": "^1.1.1",
+    "node-telegram-bot-api": "^0.64.0",
+    "nodemailer": "^6.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/big.js": "^6.2.2",
+    "@types/bn.js": "^5.2.0",
+    "@types/bs58": "^4.0.4",
+    "@types/node": "^20.10.0",
+    "@types/nodemailer": "^6.4.14",
+    "@types/ws": "^8.5.10"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
